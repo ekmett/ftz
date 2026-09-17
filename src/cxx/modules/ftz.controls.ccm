@@ -13,46 +13,83 @@ export module ftz.controls;
 
 export namespace ftz {
   // Native CPU environment only. These controls do not configure GPUs or Wasm.
+  /** \defgroup ftz_environment CPU environment and admission
+   * Controls are local to the calling CPU thread. They neither enable an ISA nor
+   * configure a GPU. Establish the environment on every numerical worker and
+   * qualify the compiled profile explicitly; ordinary arithmetic never probes it.
+   * \snippet environment.cc borrowed_region
+   * \snippet environment.cc owned_thread_entry
+   */
+  /// \ingroup ftz_environment
+  /// \brief Selects gradual denormals or signed native input/output flushing.
   enum class native_fp32_mode { gradual, flush };
+  /// \ingroup ftz_environment
+  /// \brief Opaque native control/status snapshot, suitable for exact restoration checks.
   struct native_fp_state {
     std::uint64_t control, status;
     friend bool operator==(native_fp_state const &, native_fp_state const &) = default;
   };
+  /// \ingroup ftz_environment
+  /// \brief Reports whether this build can access native CPU FP controls; this is not numerical
+  /// admission.
   bool native_fp32_environment_available() noexcept;
+  /// \ingroup ftz_environment
+  /// \brief Reads this thread's controls and status without changing them; unsupported hosts
+  /// return zero fields.
   native_fp_state read_native_fp_state() noexcept;
 
   // Application-owned numerical thread entry: set RNE, masked exceptions,
   // clear status flags and select denormal handling. No qualification, owner
   // lookup, allocation or restoration. Invalid/unavailable modes leave state
   // untouched and return false. ISA availability is a separate startup check.
+  /// \ingroup ftz_environment
+  /// \brief Initializes an application-owned numerical thread, without restoration or admission.
+  /// \returns false for unavailable controls or an invalid mode, leaving state untouched.
   [[nodiscard]] bool set_native_fp32_mode(native_fp32_mode mode) noexcept;
 
   // Borrowed numerical region: save and restore the caller's complete state.
   // Construction establishes RNE, masked exceptions and clear status flags.
   // Native FTZ is not defined here as post-round software bit normalization.
+  /** \ingroup ftz_environment
+   * \brief Borrows the calling thread with RNE, masked exceptions and selected denormal controls.
+   * Saves and restores complete control/status state. The object and its nested
+   * external scopes must be destroyed on their constructing thread. It cannot
+   * be copied or moved. Construction throws on invalid/unavailable controls when
+   * exceptions are enabled; otherwise it terminates. Destruction is noexcept.
+   */
   struct native_fp32_scope {
   private:
     native_fp_state previous_, requested_;
     std::thread::id owner_;
   public:
+    /// \brief Saves the current thread state and establishes the requested numerical region.
     explicit native_fp32_scope(native_fp32_mode mode);
+    /// \brief Restores the complete saved state on the constructing thread.
     ~native_fp32_scope() noexcept;
     native_fp32_scope(native_fp32_scope const &) = delete;
     native_fp32_scope & operator=(native_fp32_scope const &) = delete;
     native_fp32_scope(native_fp32_scope &&) = delete;
     native_fp32_scope & operator=(native_fp32_scope &&) = delete;
+    /// \brief Returns the state captured before this numerical region.
     native_fp_state previous() const noexcept { return previous_; }
+    /// \brief Returns the controls and initially clear status requested by construction.
     native_fp_state requested() const noexcept { return requested_; }
+    /// \brief Checks thread identity and controls; accrued exception status does not cause failure.
     bool controls_match() const noexcept;
 
     // Restore the environment agreed with the caller while invoking external
     // code; restore this numerical region's current state on return/unwind.
+    /// \brief Temporarily restores the enclosing region's caller environment for external code.
+    /// Saves the current numerical state and reinstates it on return or unwind.
+    /// The enclosing region must outlive this guard; both guards belong to the same thread.
     struct external_scope {
     private:
       native_fp_state previous_;
       std::thread::id owner_;
     public:
+      /// \brief Saves the current state, then restores region.previous() on the same thread.
       explicit external_scope(native_fp32_scope const & region) noexcept;
+      /// \brief Restores the numerical state captured by this external-call guard.
       ~external_scope() noexcept;
       external_scope(external_scope const &) = delete;
       external_scope & operator=(external_scope const &) = delete;
@@ -169,19 +206,26 @@ namespace ftz {
 // Admission data and decisions belong to this baseline module. Only the
 // supplied startup evaluator is compiled with a numerical profile's options.
 export namespace ftz {
+  /// \ingroup ftz_environment
+  /// \brief Identifies the first rejected admission requirement.
   enum class ftz32_cpu_failure {
     none, environment_unavailable, normal_arithmetic, core_contract, hardware_ftz
   };
 
   // A startup observation for this compiled profile and the calling thread.
   // It neither changes controls nor configures another thread or any GPU.
+  /// \ingroup ftz_environment
+  /// \brief Results of finite startup witnesses for this scalar compilation and calling thread.
+  /// These observations are not an exhaustive proof of every arithmetic input.
   struct ftz32_cpu_admission {
     ftz32_cpu_failure failure = ftz32_cpu_failure::environment_unavailable;
     bool normal_rne = false, fused_fma = false, separate_rounding = false;
     bool signed_input_ftz = false, signed_output_ftz = false, core_exact = false;
     bool explicit_core_exact = false, controls_stable = false;
     ftz::native_fp_state before{}, after{};
+    /// \brief Reports whether every requirement of the requested policy passed.
     bool admitted() const noexcept { return failure == ftz32_cpu_failure::none; }
+    /// \brief Reports explicit-policy compatibility without requiring hardware signed flushing.
     bool explicit_compatible() const noexcept {
       return normal_rne && fused_fma && separate_rounding && explicit_core_exact && controls_stable;
     }
