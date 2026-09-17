@@ -1,0 +1,77 @@
+# SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
+# SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
+cmake_minimum_required(VERSION 4.4)
+project(ftz VERSION 0.0.1 LANGUAGES NONE)
+option(FTZ_BUILD_HOST "Build the C++26 module and archive" ON)
+option(FTZ_BUILD_TESTS "Build numerical and module regression tests" ${PROJECT_IS_TOP_LEVEL})
+option(FTZ_ENABLE_PCH "Precompile common module headers" OFF)
+option(FTZ_ENABLE_IPO "Enable interprocedural optimization" OFF)
+option(FTZ_ENABLE_ASAN "Enable host address sanitizer" OFF)
+option(FTZ_ENABLE_EXCEPTIONS "Enable C++ exceptions" OFF)
+set(FTZ_FP32_HARDWARE_FTZ 0 CACHE STRING "0: explicit FTZ, 1: admitted hardware FTZ")
+set_property(CACHE FTZ_FP32_HARDWARE_FTZ PROPERTY STRINGS 0 1)
+if(NOT FTZ_FP32_HARDWARE_FTZ MATCHES "^[01]$")
+  message(FATAL_ERROR "FTZ_FP32_HARDWARE_FTZ must be 0 or 1.")
+endif()
+if(FTZ_BUILD_HOST)
+  enable_language(CXX)
+  find_package(simd CONFIG REQUIRED COMPONENTS simd headers)
+else()
+  set(CMAKE_INSTALL_LIBDIR lib CACHE PATH "Library installation directory")
+  find_package(simd CONFIG REQUIRED COMPONENTS headers)
+endif()
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
+# Shader users need the attributes/header dependency, never a CPU module or ISA.
+add_library(ftz_hlsl INTERFACE)
+add_library(ftz::hlsl ALIAS ftz_hlsl)
+set_target_properties(ftz_hlsl PROPERTIES EXPORT_NAME hlsl)
+file(GLOB_RECURSE ftz_shared_headers CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/shared/ftz/*.h")
+file(GLOB_RECURSE ftz_shader_headers CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/hlsl/ftz/*.h")
+target_sources(ftz_hlsl INTERFACE
+  FILE_SET shader_headers TYPE HEADERS BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/src/hlsl" FILES ${ftz_shader_headers}
+  FILE_SET shared_headers TYPE HEADERS BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/src/shared" FILES ${ftz_shared_headers})
+target_include_directories(ftz_hlsl INTERFACE
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/hlsl>"
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/shared>"
+  "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/hlsl>"
+  "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/shared>")
+target_link_libraries(ftz_hlsl INTERFACE simd::headers)
+install(TARGETS ftz_hlsl EXPORT ftzShaderTargets
+  FILE_SET shader_headers DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/hlsl"
+  FILE_SET shared_headers DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/shared")
+install(EXPORT ftzShaderTargets NAMESPACE ftz:: DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/ftz")
+export(EXPORT ftzShaderTargets NAMESPACE ftz:: FILE "${PROJECT_BINARY_DIR}/ftzShaderTargets.cmake")
+
+if(FTZ_BUILD_HOST)
+  include(cmake/Compiler.cmake)
+  add_subdirectory(src)
+  if(FTZ_BUILD_TESTS)
+    enable_testing()
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
+      set(ftz_default_isa NEON)
+      set(ftz_default_profiles NEON)
+    else()
+      set(ftz_default_isa AVX2)
+      set(ftz_default_profiles AVX2)
+    endif()
+    set(FTZ_TEST_ISA "${ftz_default_isa}" CACHE STRING "ISA of native numerical fixtures")
+    set(FTZ_TEST_PROFILES "${ftz_default_profiles}" CACHE STRING "ISA profiles tested in separate translation units")
+    add_subdirectory(tests/ftz_module)
+    add_subdirectory(tests/core_regression)
+    add_subdirectory(tests/isa_profiles)
+    add_subdirectory(tests/tanh)
+    add_subdirectory(tests/log)
+    add_subdirectory(tests/atan2)
+    add_subdirectory(tests/value_utilities)
+    add_subdirectory(tests/trig_single)
+  endif()
+endif()
+configure_package_config_file(cmake/ftzConfig.cmake.in "${PROJECT_BINARY_DIR}/ftzConfig.cmake"
+  INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/ftz")
+write_basic_package_version_file("${PROJECT_BINARY_DIR}/ftzConfigVersion.cmake"
+  VERSION ${PROJECT_VERSION} COMPATIBILITY SameMajorVersion)
+install(FILES "${PROJECT_BINARY_DIR}/ftzConfig.cmake" "${PROJECT_BINARY_DIR}/ftzConfigVersion.cmake"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/ftz")
+install(FILES LICENSE.md DESTINATION "${CMAKE_INSTALL_DATADIR}/ftz")

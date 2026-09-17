@@ -1,0 +1,19 @@
+module;
+#include <simd/attributes.h>
+#include <array>
+#include <bit>
+#include <cstdint>
+export module package;
+export import ftz;
+import simd.@profile@;
+export namespace package {
+  using vector = simd::vec<ftz::ftz32,4,simd::@profile@>;
+  simd_inline void fused(float const * input, float * output) {
+    auto x = vector::load(input);
+    fma(x, vector(2.f), vector(1.f)).store(output);
+  }
+  // This is supplied by package.lib, which in turn needs FTZ's native controls.
+  bool check();
+}
+// SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
+// SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0

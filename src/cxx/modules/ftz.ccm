@@ -1,0 +1,384 @@
+module;
+#include <simd/attributes.h>
+#include <ftz/config.h>
+#include <algorithm>
+#include <array>
+#include <bit>
+#include <cmath>
+#include <concepts>
+#include <cstdint>
+#include <cstring>
+#include <type_traits>
+#include <utility>
+import simd.scalar;
+#include <ftz/ftz32_ops.h>
+export module ftz;
+export import ftz.controls;
+
+#if defined(__FAST_MATH__)
+#error Reproducible ftz32 requires ordinary expression contraction and fast math disabled
+#endif
+
+export namespace ftz {
+  template <bool Hardware>
+  struct simd_nodiscard basic_ftz32 {
+    static constexpr bool hardware = Hardware;
+    constexpr simd_inline basic_ftz32() noexcept = default;
+    constexpr simd_inline basic_ftz32(float value) noexcept
+      : bits_(detail::ftz32_canonical(std::bit_cast<unsigned int>(value))) {}
+    simd_nodiscard constexpr simd_inline simd_pure operator float() const noexcept { return to_float(); }
+    simd_nodiscard static constexpr simd_inline simd_const basic_ftz32 from_float(float value) noexcept { return basic_ftz32(value); }
+    // Caller guarantees normal/signed zero/infinity/any NaN input.
+    simd_nodiscard static constexpr simd_inline simd_const basic_ftz32 unsafe_from_float32(float value) noexcept {
+      return canonical(std::bit_cast<unsigned int>(value));
+    }
+    simd_nodiscard static constexpr simd_inline simd_const basic_ftz32 from_bits(unsigned int bits) noexcept {
+      return canonical(detail::ftz32_canonical(bits));
+    }
+    simd_nodiscard constexpr simd_inline simd_pure float to_float() const noexcept { return std::bit_cast<float>(bits_); }
+    simd_nodiscard constexpr simd_inline simd_pure unsigned int to_bits() const noexcept { return bits_; }
+    simd_nodiscard friend simd_inline simd_const basic_ftz32 operator+(basic_ftz32 a, basic_ftz32 b) noexcept {
+      return canonical(detail::ftz32_add<Hardware>(a.bits_, b.bits_));
+    }
+    simd_nodiscard friend simd_inline simd_const basic_ftz32 operator-(basic_ftz32 a, basic_ftz32 b) noexcept {
+      return canonical(detail::ftz32_sub<Hardware>(a.bits_, b.bits_));
+    }
+    simd_nodiscard friend simd_inline simd_const basic_ftz32 operator*(basic_ftz32 a, basic_ftz32 b) noexcept {
+      return canonical(detail::ftz32_mul(a.bits_, b.bits_));
+    }
+    simd_nodiscard friend simd_inline simd_const basic_ftz32 operator/(basic_ftz32 a, basic_ftz32 b) noexcept {
+      return canonical(detail::ftz32_div<Hardware>(a.bits_, b.bits_));
+    }
+    simd_nodiscard friend constexpr simd_inline simd_const basic_ftz32 operator-(basic_ftz32 a) noexcept { return canonical(detail::ftz32_neg(a.bits_)); }
+    simd_nodiscard friend constexpr simd_inline simd_const basic_ftz32 operator+(basic_ftz32 a) noexcept { return a; }
+    simd_nodiscard friend constexpr simd_inline simd_const bool operator==(basic_ftz32 a, basic_ftz32 b) noexcept { return detail::ftz32_equal(a.bits_, b.bits_); }
+    simd_nodiscard friend constexpr simd_inline simd_const bool operator!=(basic_ftz32 a, basic_ftz32 b) noexcept { return !(a == b); }
+    simd_nodiscard friend constexpr simd_inline simd_const bool operator<(basic_ftz32 a, basic_ftz32 b) noexcept { return detail::ftz32_less(a.bits_, b.bits_); }
+    simd_nodiscard friend constexpr simd_inline simd_const bool operator>(basic_ftz32 a, basic_ftz32 b) noexcept { return b < a; }
+    simd_nodiscard friend constexpr simd_inline simd_const bool operator<=(basic_ftz32 a, basic_ftz32 b) noexcept { return a < b || a == b; }
+    simd_nodiscard friend constexpr simd_inline simd_const bool operator>=(basic_ftz32 a, basic_ftz32 b) noexcept { return b <= a; }
+    simd_inline basic_ftz32 & operator+=(basic_ftz32 b) noexcept { return *this = *this + b; }
+    simd_inline basic_ftz32 & operator-=(basic_ftz32 b) noexcept { return *this = *this - b; }
+    simd_inline basic_ftz32 & operator*=(basic_ftz32 b) noexcept { return *this = *this * b; }
+    simd_inline basic_ftz32 & operator/=(basic_ftz32 b) noexcept { return *this = *this / b; }
+  private:
+    unsigned int bits_ = 0u;
+    simd_nodiscard static constexpr simd_inline simd_const basic_ftz32 canonical(unsigned int bits) noexcept {
+      basic_ftz32 result; result.bits_ = bits; return result;
+    }
+  };
+  using m32 = basic_ftz32<false>;
+  using h32 = basic_ftz32<true>;
+  using ftz32 = basic_ftz32<FTZ_FP32_HARDWARE_FTZ != 0>;
+  static_assert(sizeof(m32)==sizeof(float) && sizeof(h32)==sizeof(float));
+  static_assert(std::is_trivially_copyable_v<m32> && std::is_trivially_copyable_v<h32>);
+  template <class T> inline constexpr bool is_ftz32 = false;
+  template <bool H> inline constexpr bool is_ftz32<basic_ftz32<H>> = true;
+  template <class T> concept ftz32_type = is_ftz32<std::remove_cvref_t<T>>;
+  namespace detail {
+    template <class T> struct policy_of { static constexpr int value = -1; };
+    template <bool H> struct policy_of<basic_ftz32<H>> { static constexpr int value = H; };
+    template <class T> requires requires { typename T::value_type; }
+    struct policy_of<T> : policy_of<typename T::value_type> {};
+    template <class A,class B> concept mixed_policy =
+      policy_of<std::remove_cvref_t<A>>::value >= 0 && policy_of<std::remove_cvref_t<B>>::value >= 0 &&
+      policy_of<std::remove_cvref_t<A>>::value != policy_of<std::remove_cvref_t<B>>::value;
+  }
+  // Implicit float/native conversions must never choose a policy for an
+  // expression containing both domains. Convert the operands deliberately.
+  template <class A,class B> requires detail::mixed_policy<A,B> void operator+(A,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void operator-(A,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void operator*(A,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void operator/(A,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void operator==(A,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void operator!=(A,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void operator<(A,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void operator>(A,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void operator<=(A,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void operator>=(A,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void operator<=>(A,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void operator+=(A &,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void operator-=(A &,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void operator*=(A &,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void operator/=(A &,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void atan2(A,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void copysign(A,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void min(A,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void max(A,B) = delete;
+  template <class A,class B> requires detail::mixed_policy<A,B> void scaleb(A,B) = delete;
+  template <class A,class B,class C> requires (detail::mixed_policy<A,B> || detail::mixed_policy<A,C> || detail::mixed_policy<B,C>)
+  void fma(A,B,C) = delete;
+  template <class M,class A,class B> requires detail::mixed_policy<A,B> void select(M,A,B) = delete;
+  template <class M,class A,class B,class E> requires (detail::mixed_policy<A,B> || detail::mixed_policy<A,E> || detail::mixed_policy<B,E>)
+  void masked_scaleb(M,A,B,E) = delete;
+  template <class M,class A,class E> requires detail::mixed_policy<A,E> void masked_scaleb_zero(M,A,E) = delete;
+  template <class T> concept ftz32_scalar = std::is_arithmetic_v<T>;
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator+(basic_ftz32<Hardware> a, T b) noexcept { return a + basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator+(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) + b; }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator-(basic_ftz32<Hardware> a, T b) noexcept { return a - basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator-(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) - b; }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator*(basic_ftz32<Hardware> a, T b) noexcept { return a * basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator*(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) * b; }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator/(basic_ftz32<Hardware> a, T b) noexcept { return a / basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator/(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) / b; }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator==(basic_ftz32<Hardware> a, T b) noexcept { return a == basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator==(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) == b; }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator!=(basic_ftz32<Hardware> a, T b) noexcept { return a != basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator!=(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) != b; }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator<(basic_ftz32<Hardware> a, T b) noexcept { return a < basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator<(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) < b; }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator>(basic_ftz32<Hardware> a, T b) noexcept { return a > basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator>(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) > b; }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator<=(basic_ftz32<Hardware> a, T b) noexcept { return a <= basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator<=(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) <= b; }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator>=(basic_ftz32<Hardware> a, T b) noexcept { return a >= basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator>=(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) >= b; }
+
+  template <bool Hardware>
+  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> fma(basic_ftz32<Hardware> a, basic_ftz32<Hardware> b, basic_ftz32<Hardware> c) noexcept {
+    return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_fma(a.to_bits(), b.to_bits(), c.to_bits())));
+  }
+  template <bool Hardware>
+  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> sin(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_sin<Hardware>(a.to_bits()))); }
+  template <bool Hardware>
+  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> cos(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_cos<Hardware>(a.to_bits()))); }
+  template <bool Hardware>
+  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> tanh(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_tanh<Hardware>(a.to_bits()))); }
+  template <bool Hardware>
+  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> log(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_log<Hardware>(a.to_bits()))); }
+  template <bool Hardware>
+  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> log1p(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_log1p<Hardware>(a.to_bits()))); }
+  template <bool Hardware>
+  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> exp(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_exp(a.to_bits()))); }
+  template <bool Hardware>
+  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> expm1(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_expm1<Hardware>(a.to_bits()))); }
+  template <bool Hardware>
+  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> atan2(basic_ftz32<Hardware> y, basic_ftz32<Hardware> x) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_atan2<Hardware>(y.to_bits(), x.to_bits()))); }
+  template <bool Hardware>
+  simd_nodiscard simd_inline simd_const std::pair<basic_ftz32<Hardware>, basic_ftz32<Hardware>> sincos(basic_ftz32<Hardware> a) noexcept {
+    auto r=detail::ftz32_sincos<Hardware>(a.to_bits()); return {basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(r.sine)),basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(r.cosine))};
+  }
+  template <bool Hardware>
+  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> sqrt(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_sqrt(a.to_bits()))); }
+  template <bool Hardware>
+  simd_nodiscard constexpr simd_inline simd_const basic_ftz32<Hardware> abs(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_abs(a.to_bits()))); }
+  template <bool Hardware>
+  simd_nodiscard constexpr simd_inline simd_const basic_ftz32<Hardware> neg(basic_ftz32<Hardware> a) noexcept { return -a; }
+  template <bool Hardware>
+  simd_nodiscard constexpr simd_inline simd_const bool isnan(basic_ftz32<Hardware> a) noexcept { return detail::ftz32_isnan(a.to_bits()); }
+  template <bool Hardware>
+  simd_nodiscard constexpr simd_inline simd_const bool isinf(basic_ftz32<Hardware> a) noexcept { return (a.to_bits() & 0x7fffffffu) == detail::ftz32_infinity; }
+  template <bool Hardware>
+  simd_nodiscard constexpr simd_inline simd_const bool isfinite(basic_ftz32<Hardware> a) noexcept { return (a.to_bits() & 0x7fffffffu) < detail::ftz32_infinity; }
+  template <bool Hardware>
+  simd_nodiscard constexpr simd_inline simd_const bool signbit(basic_ftz32<Hardware> a) noexcept { return (a.to_bits() & detail::ftz32_sign) != 0u; }
+  template <bool Hardware>
+  simd_nodiscard constexpr simd_inline simd_const basic_ftz32<Hardware> copysign(basic_ftz32<Hardware> a, basic_ftz32<Hardware> b) noexcept {
+    return basic_ftz32<Hardware>::from_bits((a.to_bits() & 0x7fffffffu) | (b.to_bits() & detail::ftz32_sign));
+  }
+  namespace detail {
+    // A conversion to exactly one policy preserves that policy. Built-in
+    // scalars retain the configured compatibility alias; a user conversion
+    // offering both domains is ambiguous and must choose explicitly.
+    template <class T> concept scalar_argument = !ftz32_type<T> &&
+      (std::is_arithmetic_v<std::remove_cvref_t<T>> ||
+       (std::convertible_to<T,m32> != std::convertible_to<T,h32>));
+    template <class T> using scalar_argument_t = std::conditional_t<
+      std::is_arithmetic_v<std::remove_cvref_t<T>>, ftz32,
+      std::conditional_t<std::convertible_to<T,m32>,m32,h32>>;
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard constexpr simd_inline auto sin(T && a)
+    noexcept(noexcept(sin(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return sin(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard constexpr simd_inline auto cos(T && a)
+    noexcept(noexcept(cos(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return cos(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard constexpr simd_inline auto sincos(T && a)
+    noexcept(noexcept(sincos(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return sincos(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard constexpr simd_inline auto tanh(T && a)
+    noexcept(noexcept(tanh(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return tanh(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard constexpr simd_inline auto log(T && a)
+    noexcept(noexcept(log(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return log(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard constexpr simd_inline auto log1p(T && a)
+    noexcept(noexcept(log1p(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return log1p(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard constexpr simd_inline auto exp(T && a)
+    noexcept(noexcept(exp(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return exp(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard constexpr simd_inline auto expm1(T && a)
+    noexcept(noexcept(expm1(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return expm1(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard constexpr simd_inline auto sqrt(T && a)
+    noexcept(noexcept(sqrt(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return sqrt(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard constexpr simd_inline auto abs(T && a)
+    noexcept(noexcept(abs(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return abs(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard constexpr simd_inline auto neg(T && a)
+    noexcept(noexcept(neg(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return neg(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard constexpr simd_inline auto isnan(T && a)
+    noexcept(noexcept(isnan(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return isnan(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard constexpr simd_inline auto isinf(T && a)
+    noexcept(noexcept(isinf(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return isinf(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard constexpr simd_inline auto isfinite(T && a)
+    noexcept(noexcept(isfinite(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return isfinite(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard constexpr simd_inline auto signbit(T && a)
+    noexcept(noexcept(signbit(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return signbit(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+
+  namespace detail {
+    template <class T> inline constexpr int scalar_policy = [] {
+      if constexpr (ftz32_type<T>) return int(std::remove_cvref_t<T>::hardware);
+      else if constexpr (std::is_arithmetic_v<std::remove_cvref_t<T>>) return -1;
+      else if constexpr (std::convertible_to<T,m32> != std::convertible_to<T,h32>)
+        return int(std::convertible_to<T,h32>);
+      else return -2;
+    }();
+    template <class... T> concept scalar_arguments = ((scalar_policy<T> >= -1) && ...) &&
+      !(((scalar_policy<T> == 0) || ...) && ((scalar_policy<T> == 1) || ...));
+    template <class... T> using scalar_arguments_t = std::conditional_t<
+      ((scalar_policy<T> == 0) || ...), m32,
+      std::conditional_t<((scalar_policy<T> == 1) || ...),h32,ftz32>>;
+  }
+  template <class A,class B,class C> requires detail::scalar_arguments<A &&,B &&,C &&> &&
+      (!(ftz32_type<A> && ftz32_type<B> && ftz32_type<C>))
+  simd_nodiscard simd_inline auto fma(A && a,B && b,C && c)
+      noexcept(noexcept(fma(detail::scalar_arguments_t<A &&,B &&,C &&>(std::forward<A>(a)),
+        detail::scalar_arguments_t<A &&,B &&,C &&>(std::forward<B>(b)),
+        detail::scalar_arguments_t<A &&,B &&,C &&>(std::forward<C>(c))))) {
+    using F=detail::scalar_arguments_t<A &&,B &&,C &&>;
+    return fma(F(std::forward<A>(a)),F(std::forward<B>(b)),F(std::forward<C>(c)));
+  }
+  template <class A,class B> requires detail::scalar_arguments<A &&,B &&> &&
+      (!(ftz32_type<A> && ftz32_type<B>))
+  simd_nodiscard constexpr simd_inline auto atan2(A && a,B && b)
+      noexcept(noexcept(atan2(detail::scalar_arguments_t<A &&,B &&>(std::forward<A>(a)),
+        detail::scalar_arguments_t<A &&,B &&>(std::forward<B>(b))))) {
+    using F=detail::scalar_arguments_t<A &&,B &&>;
+    return atan2(F(std::forward<A>(a)),F(std::forward<B>(b)));
+  }
+  template <class A,class B> requires detail::scalar_arguments<A &&,B &&> &&
+      (!(ftz32_type<A> && ftz32_type<B>))
+  simd_nodiscard constexpr simd_inline auto copysign(A && a,B && b)
+      noexcept(noexcept(copysign(detail::scalar_arguments_t<A &&,B &&>(std::forward<A>(a)),
+        detail::scalar_arguments_t<A &&,B &&>(std::forward<B>(b))))) {
+    using F=detail::scalar_arguments_t<A &&,B &&>;
+    return copysign(F(std::forward<A>(a)),F(std::forward<B>(b)));
+  }
+
+}
+
+/**
+ * \file
+ * \license
+ * SPDX-FileType: SOURCE
+ * SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
+ * SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
+ * \endlicense
+ * \author Edward Kmett <ekmett@gmail.com>
+ * \brief Scalar float wrapper with signed FTZ, deterministic arithmetic, and math overloads.
+ */
+
+#include "ftz/simd.h"
+
+namespace ftz::detail {
+  using ::ftz::detail::ftz32_cpu_witness;
+  using ::ftz::detail::ftz32_cpu_path;
+  // Volatile input loads prevent compile-time evaluation. The noinline
+  // boundary is a probe property, never part of ordinary value arithmetic.
+  template <bool Hardware>
+#if defined(_MSC_VER)
+  __declspec(noinline)
+#elif defined(__GNUC__) || defined(__clang__)
+  __attribute__((noinline))
+#endif
+  inline unsigned int ftz32_cpu_evaluate(ftz32_cpu_witness row, ftz32_cpu_path path) {
+    volatile unsigned int a_word = row.a, b_word = row.b, c_word = row.c;
+    unsigned int a = a_word, b = b_word, c = c_word;
+    if (path != ftz32_cpu_path::raw) {
+      // Probe the explicit sibling's repaired addition independently of the
+      // compiled profile. Other finite boundary witnesses use the shared
+      // multiplication/FMA repair graph, which is unchanged by add policy.
+      auto add = [path](unsigned int x, unsigned int y) {
+        return path == ftz32_cpu_path::explicit_core ? ftz32_add_policy<false>(x,y) : ftz32_add<Hardware>(x,y);
+      };
+      switch (row.operation) {
+        case 0: return add(a,b);
+        case 1: return ftz32_mul(a,b);
+        case 2: return ftz32_fma(a,b,c);
+        case 3: return add(ftz32_mul(a,b),c);
+        default: return ftz32_canonical(a);
+      }
+    }
+    float x = std::bit_cast<float>(a), y = std::bit_cast<float>(b), z = std::bit_cast<float>(c);
+    switch (row.operation) {
+      case 0: return std::bit_cast<unsigned int>(x+y);
+      case 1: return std::bit_cast<unsigned int>(x*y);
+      case 2: return std::bit_cast<unsigned int>(std::fma(x,y,z));
+      default: {
+        float product = x*y;
+        return std::bit_cast<unsigned int>(product+z);
+      }
+    }
+  }
+}
+
+export namespace ftz {
+  // Explicit compiled-profile qualification, normally once at process startup
+  // under native_fp32_scope. Thread entry and arithmetic never call this bank.
+  // Like arithmetic, the probe may set masked exception status flags; controls
+  // stay untouched and the owning scope restores the caller's complete state.
+  template <ftz32_type T = ftz32>
+  [[nodiscard]] inline ftz32_cpu_admission probe_ftz32_cpu() {
+    return ::ftz::detail::ftz32_cpu_probe(detail::ftz32_cpu_evaluate<T::hardware>, T::hardware);
+  }
+}
+
+/**
+ * \file
+ * \license
+ * SPDX-FileType: SOURCE
+ * SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
+ * SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
+ * \endlicense
+ * \author Edward Kmett <ekmett@gmail.com>
+ * \brief Startup checks for rounding, fused arithmetic, signed FTZ, and boundary repair.
+ */
+

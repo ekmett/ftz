@@ -1,0 +1,317 @@
+module;
+#include <cstdint>
+#include <array>
+#include <thread>
+#include <cassert>
+#include <stdexcept>
+#include <cstdio>
+#include <exception>
+#if defined(_M_X64) || defined(__x86_64__)
+#include <xmmintrin.h>
+#endif
+export module ftz.controls;
+
+export namespace ftz {
+  // Native CPU environment only. These controls do not configure GPUs or Wasm.
+  enum class native_fp32_mode { gradual, flush };
+  struct native_fp_state {
+    std::uint64_t control, status;
+    friend bool operator==(native_fp_state const &, native_fp_state const &) = default;
+  };
+  bool native_fp32_environment_available() noexcept;
+  native_fp_state read_native_fp_state() noexcept;
+
+  // Application-owned numerical thread entry: set RNE, masked exceptions,
+  // clear status flags and select denormal handling. No qualification, owner
+  // lookup, allocation or restoration. Invalid/unavailable modes leave state
+  // untouched and return false. ISA availability is a separate startup check.
+  [[nodiscard]] bool set_native_fp32_mode(native_fp32_mode mode) noexcept;
+
+  // Borrowed numerical region: save and restore the caller's complete state.
+  // Construction establishes RNE, masked exceptions and clear status flags.
+  // Native FTZ is not defined here as post-round software bit normalization.
+  struct native_fp32_scope {
+  private:
+    native_fp_state previous_, requested_;
+    std::thread::id owner_;
+  public:
+    explicit native_fp32_scope(native_fp32_mode mode);
+    ~native_fp32_scope() noexcept;
+    native_fp32_scope(native_fp32_scope const &) = delete;
+    native_fp32_scope & operator=(native_fp32_scope const &) = delete;
+    native_fp32_scope(native_fp32_scope &&) = delete;
+    native_fp32_scope & operator=(native_fp32_scope &&) = delete;
+    native_fp_state previous() const noexcept { return previous_; }
+    native_fp_state requested() const noexcept { return requested_; }
+    bool controls_match() const noexcept;
+
+    // Restore the environment agreed with the caller while invoking external
+    // code; restore this numerical region's current state on return/unwind.
+    struct external_scope {
+    private:
+      native_fp_state previous_;
+      std::thread::id owner_;
+    public:
+      explicit external_scope(native_fp32_scope const & region) noexcept;
+      ~external_scope() noexcept;
+      external_scope(external_scope const &) = delete;
+      external_scope & operator=(external_scope const &) = delete;
+      external_scope(external_scope &&) = delete;
+      external_scope & operator=(external_scope &&) = delete;
+    };
+  };
+}
+
+namespace ftz {
+  bool native_fp32_environment_available() noexcept {
+#if defined(_M_X64) || defined(__x86_64__) || defined(__aarch64__) || defined(__arm64__)
+    return true;
+#else
+    return false;
+#endif
+  }
+  native_fp_state read_native_fp_state() noexcept {
+#if defined(_M_X64) || defined(__x86_64__)
+    auto word = _mm_getcsr();
+    return {word & ~63u, word & 63u};
+#elif defined(__aarch64__) || defined(__arm64__)
+    native_fp_state state;
+    __asm__ volatile("mrs %0, fpcr" : "=r"(state.control) : : "memory");
+    __asm__ volatile("mrs %0, fpsr" : "=r"(state.status) : : "memory");
+    return state;
+#else
+    return {};
+#endif
+  }
+  namespace detail::fp32_environment {
+    [[noreturn]] void failure(char const * reason, bool invalid = false) {
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
+      if (invalid) throw std::invalid_argument(reason);
+      throw std::runtime_error(reason);
+#else
+      (void)invalid;
+      std::fputs(reason, stderr);
+      std::fputc('\n', stderr);
+      std::terminate();
+#endif
+    }
+    void write_native_fp_state(native_fp_state state) noexcept {
+#if defined(_M_X64) || defined(__x86_64__)
+      _mm_setcsr(static_cast<unsigned int>(state.control | state.status));
+#elif defined(__aarch64__) || defined(__arm64__)
+      __asm__ volatile("msr fpcr, %0\n\tisb" : : "r"(state.control) : "memory");
+      __asm__ volatile("msr fpsr, %0" : : "r"(state.status) : "memory");
+#else
+      (void)state;
+#endif
+    }
+    native_fp_state requested_state(native_fp_state saved, native_fp32_mode mode) {
+      if (!native_fp32_environment_available())
+        failure("Native FP32 environment unavailable; use software arithmetic policy");
+      if (mode != native_fp32_mode::gradual && mode != native_fp32_mode::flush)
+        failure("Invalid native FP32 mode", true);
+#if defined(_M_X64) || defined(__x86_64__)
+      // The admitted x86 CPU environment supports MXCSR denormal controls.
+      auto control = (saved.control & ~std::uint64_t(0xe040)) | 0x1f80u;
+      if (mode == native_fp32_mode::flush) control |= 0x8040u;
+      return {control, 0};
+#elif defined(__aarch64__) || defined(__arm64__)
+      // Standard ARM handling: AH/FIZ/NEP clear, RNE, FP traps disabled.
+      // Preserve unrelated fields, including FP16 mode and default-NaN policy.
+      constexpr std::uint64_t clear = 7u | (0x1full << 8) | (1ull << 15) |
+        (3ull << 22) | (1ull << 24);
+      auto control = saved.control & ~clear;
+      if (mode == native_fp32_mode::flush) control |= 1ull << 24;
+      return {control, 0};
+#else
+      return saved;
+#endif
+    }
+  }
+  bool set_native_fp32_mode(native_fp32_mode mode) noexcept {
+    if (!native_fp32_environment_available() ||
+        (mode != native_fp32_mode::gradual && mode != native_fp32_mode::flush)) return false;
+    auto requested = detail::fp32_environment::requested_state(read_native_fp_state(), mode);
+    detail::fp32_environment::write_native_fp_state(requested);
+    return true;
+  }
+  native_fp32_scope::native_fp32_scope(native_fp32_mode mode)
+    : previous_(read_native_fp_state()), requested_(detail::fp32_environment::requested_state(previous_, mode)),
+      owner_(std::this_thread::get_id()) {
+    detail::fp32_environment::write_native_fp_state(requested_);
+    if (read_native_fp_state() != requested_) {
+      detail::fp32_environment::write_native_fp_state(previous_);
+      detail::fp32_environment::failure("Native FP32 environment did not accept requested controls");
+    }
+  }
+  native_fp32_scope::~native_fp32_scope() noexcept {
+    assert(owner_ == std::this_thread::get_id());
+    detail::fp32_environment::write_native_fp_state(previous_);
+  }
+  bool native_fp32_scope::controls_match() const noexcept {
+    return owner_ == std::this_thread::get_id() && read_native_fp_state().control == requested_.control;
+  }
+  native_fp32_scope::external_scope::external_scope(native_fp32_scope const & region) noexcept
+    : previous_(read_native_fp_state()), owner_(std::this_thread::get_id()) {
+    assert(region.owner_ == owner_);
+    detail::fp32_environment::write_native_fp_state(region.previous_);
+  }
+  native_fp32_scope::external_scope::~external_scope() noexcept {
+    assert(owner_ == std::this_thread::get_id());
+    detail::fp32_environment::write_native_fp_state(previous_);
+  }
+}
+
+// SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
+// SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
+// CPU rounding and denormal state ownership, independent of every SIMD profile.
+
+// Admission data and decisions belong to this baseline module. Only the
+// supplied startup evaluator is compiled with a numerical profile's options.
+export namespace ftz {
+  enum class ftz32_cpu_failure {
+    none, environment_unavailable, normal_arithmetic, core_contract, hardware_ftz
+  };
+
+  // A startup observation for this compiled profile and the calling thread.
+  // It neither changes controls nor configures another thread or any GPU.
+  struct ftz32_cpu_admission {
+    ftz32_cpu_failure failure = ftz32_cpu_failure::environment_unavailable;
+    bool normal_rne = false, fused_fma = false, separate_rounding = false;
+    bool signed_input_ftz = false, signed_output_ftz = false, core_exact = false;
+    bool explicit_core_exact = false, controls_stable = false;
+    ftz::native_fp_state before{}, after{};
+    bool admitted() const noexcept { return failure == ftz32_cpu_failure::none; }
+    bool explicit_compatible() const noexcept {
+      return normal_rne && fused_fma && separate_rounding && explicit_core_exact && controls_stable;
+    }
+  };
+
+}
+export namespace ftz::detail {
+  struct ftz32_cpu_witness { unsigned int operation, a, b, c, expected; };
+  enum class ftz32_cpu_path { raw, compiled_core, explicit_core };
+  using ftz32_cpu_evaluator = unsigned int (*)(ftz32_cpu_witness, ftz32_cpu_path);
+  ftz32_cpu_admission ftz32_cpu_probe(ftz32_cpu_evaluator evaluate, bool hardware_ftz);
+}
+namespace ftz::detail {
+
+  // Operations: 0 add, 1 multiply, 2 fused multiply-add, 3 separately rounded
+  // multiply/add, 4 canonical word import. All literals are binary32 words.
+  inline constexpr std::array ftz32_normal_witnesses {
+    ftz32_cpu_witness{0,0x3f800000u,0x33800000u,0u,0x3f800000u},
+    ftz32_cpu_witness{0,0xbf800000u,0xb3800000u,0u,0xbf800000u},
+    ftz32_cpu_witness{0,0x3f800000u,0x34400000u,0u,0x3f800002u},
+    ftz32_cpu_witness{0,0xbf800000u,0xb4400000u,0u,0xbf800002u},
+    ftz32_cpu_witness{1,0x3f800001u,0x3f800001u,0u,0x3f800002u},
+    ftz32_cpu_witness{1,0xbf800001u,0x3f800001u,0u,0xbf800002u}
+  };
+  inline constexpr std::array ftz32_fusion_witnesses {
+    ftz32_cpu_witness{2,0x3f800001u,0x3f7ffffeu,0xbf800000u,0xa8800000u},
+    ftz32_cpu_witness{2,0xbf800001u,0x3f7ffffeu,0x3f800000u,0x28800000u},
+    ftz32_cpu_witness{3,0x3f800001u,0x3f7ffffeu,0xbf800000u,0u}
+  };
+  inline constexpr std::array ftz32_flush_witnesses {
+    ftz32_cpu_witness{1,1u,0x7e800000u,0u,0u},
+    ftz32_cpu_witness{1,0x80000001u,0x7e800000u,0u,0x80000000u},
+    ftz32_cpu_witness{2,1u,0x7e800000u,0u,0u},
+    ftz32_cpu_witness{2,0x80000001u,0x7e800000u,0x80000000u,0x80000000u},
+    ftz32_cpu_witness{1,0x00800000u,0x3f000000u,0u,0u},
+    ftz32_cpu_witness{1,0x80800000u,0x3f000000u,0u,0x80000000u},
+    ftz32_cpu_witness{2,0x00800000u,0x3f000000u,0u,0u},
+    ftz32_cpu_witness{2,0x80800000u,0x3f000000u,0x80000000u,0x80000000u},
+    ftz32_cpu_witness{0,0x00800000u,0x80800001u,0u,0x80000000u},
+    ftz32_cpu_witness{0,0x80800000u,0x00800001u,0u,0u}
+  };
+  inline constexpr std::array ftz32_core_witnesses {
+    ftz32_cpu_witness{1,0x00800000u,0x3f7fffffu,0u,0x00800000u},
+    ftz32_cpu_witness{1,0x80800000u,0x3f7fffffu,0u,0x80800000u},
+    ftz32_cpu_witness{1,0x20000001u,0x1ffffffeu,0u,0x00800000u},
+    ftz32_cpu_witness{1,0xa0000001u,0x1ffffffeu,0u,0x80800000u},
+    ftz32_cpu_witness{2,0x00800000u,0x3f7fffffu,0u,0x00800000u},
+    ftz32_cpu_witness{2,0x80800000u,0x3f7fffffu,0x80000000u,0x80800000u},
+    ftz32_cpu_witness{2,0x20000001u,0x1ffffffeu,0u,0x00800000u},
+    ftz32_cpu_witness{2,0xa0000001u,0x1ffffffeu,0x80000000u,0x80800000u},
+    ftz32_cpu_witness{1,0x00800000u,0x3f7ffffeu,0u,0u},
+    ftz32_cpu_witness{1,0x80800000u,0x3f7ffffeu,0u,0x80000000u},
+    ftz32_cpu_witness{0,0x00800000u,0x80800001u,0u,0x80000000u},
+    ftz32_cpu_witness{0,0x80800000u,0x00800001u,0u,0u},
+    ftz32_cpu_witness{3,0x00800000u,0x3f800000u,0x80800001u,0x80000000u},
+    ftz32_cpu_witness{3,0x80800000u,0x3f800000u,0x00800001u,0u},
+    ftz32_cpu_witness{4,1u,0u,0u,0u},
+    ftz32_cpu_witness{4,0x807fffffu,0u,0u,0x80000000u},
+    ftz32_cpu_witness{4,0xff800001u,0u,0u,0x7fc00000u},
+    ftz32_cpu_witness{4,0x00800000u,0u,0u,0x00800000u}
+  };
+  struct ftz32_cpu_observation {
+    bool available = false, exception_masks = false, rounding_controls = false;
+    ftz::native_fp_state before{}, after{};
+    std::array<unsigned int, ftz32_normal_witnesses.size()> normal{};
+    std::array<unsigned int, ftz32_fusion_witnesses.size()> fusion{};
+    std::array<unsigned int, ftz32_flush_witnesses.size()> flush{};
+    std::array<unsigned int, ftz32_core_witnesses.size()> core{}, explicit_core{};
+  };
+
+  template<std::size_t N> inline bool ftz32_cpu_matches(
+      std::array<unsigned int,N> const & actual, std::array<ftz32_cpu_witness,N> const & rows,
+      std::size_t first = 0, std::size_t end = N) noexcept {
+    for (auto i = first; i < end; ++i) {
+      unsigned int expected = rows[i].expected;
+      // NaN sign and payload are outside the public value contract. Every
+      // non-NaN bit, including the sign of zero, remains exact.
+      if (actual[i] != expected && !((actual[i] & 0x7fffffffu) > 0x7f800000u && (expected & 0x7fffffffu) > 0x7f800000u)) return false;
+    }
+    return true;
+  }
+  ftz32_cpu_admission ftz32_cpu_classify(ftz32_cpu_observation const & o, bool hardware_ftz) noexcept {
+    ftz32_cpu_admission r;
+    r.before=o.before; r.after=o.after;
+    if (!o.available) return r;
+    r.controls_stable=o.before.control==o.after.control;
+    r.normal_rne=o.exception_masks && o.rounding_controls && ftz32_cpu_matches(o.normal,ftz32_normal_witnesses);
+    r.fused_fma=ftz32_cpu_matches(o.fusion,ftz32_fusion_witnesses,0,2);
+    r.separate_rounding=ftz32_cpu_matches(o.fusion,ftz32_fusion_witnesses,2,3);
+    r.signed_input_ftz=ftz32_cpu_matches(o.flush,ftz32_flush_witnesses,0,4);
+    r.signed_output_ftz=ftz32_cpu_matches(o.flush,ftz32_flush_witnesses,4);
+    r.core_exact=ftz32_cpu_matches(o.core,ftz32_core_witnesses);
+    r.explicit_core_exact=ftz32_cpu_matches(o.explicit_core,ftz32_core_witnesses);
+    bool hardware_missing = false;
+    if (hardware_ftz)
+      hardware_missing = !r.signed_input_ftz || !r.signed_output_ftz;
+    if (!r.normal_rne || !r.fused_fma || !r.separate_rounding || !r.controls_stable)
+      r.failure=ftz32_cpu_failure::normal_arithmetic;
+    else if (hardware_missing)
+      r.failure=ftz32_cpu_failure::hardware_ftz;
+    else if (!r.core_exact) r.failure=ftz32_cpu_failure::core_contract;
+    else r.failure=ftz32_cpu_failure::none;
+    return r;
+  }
+  ftz32_cpu_observation ftz32_cpu_observe(ftz32_cpu_evaluator evaluate) {
+    ftz32_cpu_observation o;
+    o.available=ftz::native_fp32_environment_available();
+    o.before=ftz::read_native_fp_state();
+#if defined(_M_X64) || defined(__x86_64__)
+    o.exception_masks=(o.before.control & 0x1f80u)==0x1f80u;
+    o.rounding_controls=(o.before.control & 0x6000u)==0u;
+#elif defined(__aarch64__) || defined(__arm64__)
+    o.exception_masks=(o.before.control & ((0x1full<<8)|(1ull<<15)))==0u;
+    o.rounding_controls=(o.before.control & ((3ull<<22)|7u))==0u;
+#endif
+    // Do not risk a hardware FP exception when the caller did not first
+    // establish its numerical-thread scope. Wrong rounding is safe to test.
+    if (o.available && o.exception_masks) {
+      for (std::size_t i=0;i<o.normal.size();++i) o.normal[i]=evaluate(ftz32_normal_witnesses[i],ftz32_cpu_path::raw);
+      for (std::size_t i=0;i<o.fusion.size();++i) o.fusion[i]=evaluate(ftz32_fusion_witnesses[i],ftz32_cpu_path::raw);
+      for (std::size_t i=0;i<o.flush.size();++i) o.flush[i]=evaluate(ftz32_flush_witnesses[i],ftz32_cpu_path::raw);
+      for (std::size_t i=0;i<o.core.size();++i) {
+        o.core[i]=evaluate(ftz32_core_witnesses[i],ftz32_cpu_path::compiled_core);
+        o.explicit_core[i]=evaluate(ftz32_core_witnesses[i],ftz32_cpu_path::explicit_core);
+      }
+    }
+    o.after=ftz::read_native_fp_state();
+    return o;
+  }
+  ftz32_cpu_admission ftz32_cpu_probe(ftz32_cpu_evaluator evaluate, bool hardware_ftz) {
+    return ftz32_cpu_classify(ftz32_cpu_observe(evaluate), hardware_ftz);
+  }
+}
