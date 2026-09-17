@@ -1,9 +1,9 @@
 # Validation
 
-FTZ validation separates three questions: whether the arithmetic follows its
-specified graph, whether a compiled CPU or shader environment admits that graph,
-and whether an installed consumer sees the same types and definitions. The
-records below keep those scopes separate. Packet equality is evidence for the
+I keep three questions separate: does the arithmetic follow its specified graph,
+does a compiled CPU or shader environment admit that graph, and does an installed
+consumer see the same types and definitions? The records below answer those
+questions within their measured scope. Packet equality is evidence for the
 recorded inputs; exact-rational bounds establish only their stated theorems.
 
 The combined math checkpoint was exercised with Clang 23.1.1, CMake 4.4.3 and
@@ -93,6 +93,20 @@ Only AVX2 kernels execute on this host. The SIMD dependency additionally compile
 its AVX-512 provider, without executing it. This extends Linux CPU/package
 coverage; it adds no cross-host packet-equality, shader, sanitizer or throughput
 claim to the separately recorded results.
+
+## WebAssembly module consumer
+
+FTZ source `51ba559` with SIMD `c2360bd` passes an Emscripten 6.0.9 installed-module
+consumer under Node. The manual `m32` path passes 4,229 checks under verified
+fixed nearest-even, gradual binary32 behavior. Its 4,820-word packet is byte-identical
+to the matching Windows scalar control, with SHA-256
+`70f275a882ca908e721fcc3ff775052f297f52be425775af81fc00c4522c41cb`.
+
+The producer and relocated consumer use the exported module/package graph.
+Native CPU-control admission reports `environment_unavailable` on this target;
+`h32` is rejected. Unsupported rounding-mode warnings are retained. This check
+uses neither PCH nor IPO and establishes no browser, GPU or configurable FP-state
+behavior. It does not broaden the native hardware-policy admission contract.
 
 ## Shader evidence
 

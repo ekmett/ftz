@@ -1,6 +1,7 @@
 # Arithmetic and module boundaries
 
-Applications import `ftz` for the numerical types and math. The separate
+I keep numerical policy in FTZ and register machinery in SIMD. Applications
+import `ftz` for the numerical types and math. The separate
 `ftz.controls` module supplies floating-point environment management without
 requiring a numerical type or an ISA-specific SIMD module.
 
@@ -22,17 +23,21 @@ own their entry points and choose the compiled policy with defines.
 `simd` owns native registers, masks, architecture tags and generic `wide`
 forwarding. FTZ supplies an element customization once for each arithmetic
 policy; that customization composes with the supported native architectures.
-The dependency remains one way. Array math kernels expose independent register
+I keep that dependency one way. Array math kernels expose independent register
 chains without depending on the `wide` container itself.
 
 Manual and hardware policies describe the same arithmetic results under their
-respective admitted environments, with NaN sign and payload left unspecified. Hardware policy removes flushing which its established FP environment
-already performs. Boundary repairs remain where hardware differs in underflow
+respective admitted environments, with NaN sign and payload left unspecified.
+Hardware policy removes flushing which its established FP environment already
+performs. Boundary repairs remain where hardware differs in underflow
 rounding or signed-zero behavior. Shared integer helpers that implement these
-production repairs belong here; coefficient checks, numerical regressions and code-generation probes exercise
-those definitions from `tests`.
+production repairs belong here. Coefficient checks, numerical regressions and
+code-generation probes exercise those definitions from `tests`.
 
 HLSL remains at language version 2021. Its portable integer implementation uses
 32-bit words; `FTZ_SHADER_INT64` selects the alternative where native 64-bit
 integer arithmetic is available. Host code uses its native implementation rather
 than adopting that shader limitation.
+
+The [arithmetic guide](../docs/arithmetic.md) defines the public obligations;
+[building](../docs/building.md) covers installed module dependencies.

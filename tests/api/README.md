@@ -1,6 +1,7 @@
 # Compiled API examples
 
-The Doxygen snippets in these sources are also installed-package consumers.
+I keep the Doxygen examples in installed-package consumers so the snippets
+exercise the public interface.
 `scalar.cc` checks imports, policy choice and mathematical special values;
 `environment.cc` checks admission and complete thread-state restoration;
 `vectors.cc` checks typed memory, masks, owning swizzles, register arrays and
@@ -29,4 +30,5 @@ target `cs_6_6`, and `FTZ_FP32_HARDWARE_FTZ=0` or `1`. Hardware shader arithmeti
 requires separate device admission. Compiling an example does not establish it.
 
 Doxygen uses `EXAMPLE_PATH=tests/api` and the named snippet markers in these
-files. The examples are small API checks, not an exhaustive numerical suite.
+files. I use these as small API checks. The [validation record](../../docs/validation.md)
+keeps their scope separate from numerical and device qualification.
