@@ -1,7 +1,9 @@
 # ftz
 
-Reproducible binary32 arithmetic for C++26 and HLSL 2021, built on
-[simd](https://github.com/ekmett/simd).
+Binary32 arithmetic with a specified operation graph and signed flush-to-zero
+semantics, for C++26 and HLSL 2021. FTZ builds on
+[simd](https://github.com/ekmett/simd): the element type chooses arithmetic, while
+the vector architecture chooses storage and instructions.
 
 ```cpp
 import ftz;
@@ -17,18 +19,24 @@ auto [s, c] = sincos(values);
 auto z = fma(x, V(F(2.f)), V(F(1.f)));
 ```
 
-Use `ftz::m32` for explicit flushing or `ftz::h32` for an admitted hardware
-flush environment. Both are four-byte, trivially copyable types available in
-the same module and archive. Their policy is a template argument, not a runtime
-branch. `simd::vec<F,N,Arch>` and `simd::wide<V,M>` retain the chosen policy.
-The core SIMD library has no dependency on FTZ.
+Both policies are available in the same module and archive:
+
+| Type | Normalization | Required CPU denormal mode |
+| --- | --- | --- |
+| `ftz::m32` | Explicit signed flushing | Gradual or flush |
+| `ftz::h32` | Admitted hardware flushing, with required boundary repairs | Flush |
+
+Each type is four bytes and trivially copyable. Policy is a template argument;
+there is no per-operation runtime choice. `simd::vec<F,N,Arch>` and
+`simd::wide<V,M>` retain that policy. The dependency goes from FTZ to SIMD.
 
 ## Contract and conversions
 
-Inputs and results have no subnormal values. Normal values, infinities and signed
-zeros retain the defined operation graph; NaN sign and payload are outside the
-contract. The approximation is reproducible, not a promise of correctly rounded
-libm results. Admission and regression evidence applies to a particular compiled
+Public factories replace subnormal inputs with signed zero, and arithmetic
+returns normalized results. Normal values, infinities and signed zeros follow
+the defined operation graph; NaN sign and payload are outside the arithmetic
+contract. Reproducibility describes that graph. Approximate functions do not
+promise correctly rounded libm results. Admission and regression evidence applies to a particular compiled
 profile, compiler and device, rather than every implementation of floating point.
 
 Both types accept and convert to `float` implicitly. Explicit boundaries are
@@ -88,23 +96,26 @@ if (!result.admitted()) return 1;
 // Hardware-policy work here; the scope restores the caller's state afterward.
 ```
 
-`ftz.controls` owns environment controls independently of SIMD. At an application
-owned numerical thread entry, `set_native_fp32_mode(flush)` sets controls without
-running admission, allocating, or arranging restoration. Use the fully qualified
+`ftz.controls` owns environment controls independently of SIMD. At an application-owned
+numerical thread entry, `set_native_fp32_mode(flush)` sets controls and clears status
+without running admission, allocating, or arranging restoration. Check its
+boolean result before starting numerical work. Use the fully qualified
 enum value `ftz::native_fp32_mode::flush`. Establish the agreed controls on each
 participating thread; run the compiled-profile qualification at startup rather
 than repeatedly in arithmetic or at each task. CPU instruction and OS vector-state
 admission is a separate prerequisite before entering an ISA-specific function.
 
-Use `native_fp32_scope` when borrowing a caller's thread. Its `external_scope`
-restores the caller's environment for third-party code and then reinstates the
-numerical region on return or unwind. Neither control API configures a GPU.
+Use `native_fp32_scope` when borrowing a caller's thread. Keep the scope and its
+`external_scope` on that thread. The external scope restores the caller's
+environment for third-party code, then reinstates the numerical region on return
+or unwind. These APIs manage CPU state; GPU qualification is separate.
 
 ## Build and consume
 
 Use Clang 23, CMake 4.4 and Ninja, with an installed SIMD package. Both packages
-must use compatible exception and floating-point compiler settings. Consumer
-module interfaces are rebuilt from installed sources; PCMs are not shipped.
+must use compatible compiler, standard-library, exception and floating-point
+settings. CMake rebuilds consumer BMIs from installed module sources. Keep one
+consistent dependency configuration through an application and its libraries.
 
 ```sh
 cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ \
@@ -132,7 +143,9 @@ simd_target_profile(example AVX2)
 
 `ftz::ftz` supplies the `ftz` and `ftz.controls` modules and static archive. Its
 baseline controls do not inherit a numerical ISA. The application selects the
-provider for each numerical translation unit.
+provider for each numerical translation unit and checks CPU/OS support before
+entering it. For a separate consuming project, include both package prefixes in
+`CMAKE_PREFIX_PATH`.
 
 `FTZ_FP32_HARDWARE_FTZ` is a package build setting selecting the compatibility
 alias `ftz::ftz32`, and defaults to zero. Importing a module does not export
@@ -155,7 +168,7 @@ hardware path. Choose the compiled shader variant after device qualification, in
 [signed tiny-result add/subtract checks](tests/shader_add/README.md).
 The hardware path uses native addition/subtraction directly; a failed raw sign
 check requires the explicit variant.
-This is independent of the CPU type or CPU environment. `FTZ_SHADER_INT64` selects
+Shader policy selection is independent of the CPU type and thread environment. `FTZ_SHADER_INT64` selects
 native 64-bit integer support where available, with 32-bit word operations as the
 portable alternative.
 
@@ -166,6 +179,8 @@ precision and fused-operation rules require a separate contract.
 See [LICENSE.md](LICENSE.md) for the dual BSD-2-Clause/Apache-2.0 license and
 individual source notices for retained upstream terms.
 
+[Compiled API examples](tests/api/README.md) cover scalar conversions, thread
+scopes, vector memory, masks, arrays, wide math and a complete shader entry.
 The [source guide](src/README.md) explains the module and shader boundaries.
 See [validation](docs/validation.md) for measured cross-architecture agreement,
 shader evidence, and the limits of those checks.

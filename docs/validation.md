@@ -1,5 +1,11 @@
 # Validation
 
+FTZ validation separates three questions: whether the arithmetic follows its
+specified graph, whether a compiled CPU or shader environment admits that graph,
+and whether an installed consumer sees the same types and definitions. The
+records below keep those scopes separate. Packet equality is evidence for the
+recorded inputs; exact-rational bounds establish only their stated theorems.
+
 The combined math checkpoint was exercised with Clang 23.1.1, CMake 4.4.3 and
 Ninja on Windows x86-64 and Apple M3. Both policies are present in one library:
 manual arithmetic runs under gradual and flush controls; hardware arithmetic
@@ -41,7 +47,7 @@ redundant FTZ operations; it does not promise every operation is one instruction
 
 ## Value utilities, directed rounding and installed packages
 
-A subsequent Windows qualification uses matching SIMD and FTZ packages built
+The recorded Windows utility and rounding qualification uses matching SIMD and FTZ packages built
 with exceptions enabled, PCH and ThinLTO. The core passes 35 tests and one
 relocated consumer. Focused FTZ consumers pass on both AVX2 and AVX-512:
 
@@ -61,18 +67,18 @@ policy in gradual/flush modes and hardware policy in flush mode. This qualifies
 the rounding operations independently of ambient rounding; other arithmetic
 retains its nearest-even contract.
 
-These are later focused checks, not reruns of every historical math packet.
-No new NEON execution of these value utilities or directed rounding is recorded;
-the M3 math results above retain their original scope.
+These focused Windows checks supplement the math packets above. The retained
+M3 evidence here covers the earlier math configuration; this section adds no
+NEON utility or directed-rounding qualification.
 
 ## Shader evidence
 
-A separate RTX 4090 execution bank passed twenty exact controls: arithmetic,
+The RTX 4090 execution bank passed twenty exact controls: arithmetic,
 trigonometric/exponential functions, atan2, tanh and logarithms, each under both
 FTZ policies and both 32/64-bit integer implementations. Input and output guards
-and Vulkan validation passed. The original combined host-math checkpoint left the executed shader artifacts
-unchanged. A subsequent shader optimization removes tiny add/subtract repair
-from the admitted hardware variant; the twenty RTX cases were rerun and passed.
+and Vulkan validation passed. The combined host-math record uses unchanged shader artifacts. The admitted
+hardware variant subsequently removed tiny add/subtract repair; its separate
+rerun also passed all twenty RTX cases.
 Its separate [signed-add admission bank](../tests/shader_add/README.md) passes
 96,916 records against an integer-exact RNE-then-FTZ oracle, including raw and
 wrapped add/subtract. Input and output guards and validation remain clean.
@@ -80,8 +86,8 @@ The same oracle also agrees with all 87,772 original addition records.
 
 The hardware admission shader has one `OpFAdd` and one `OpFSub`; its wrapped
 outputs reuse the raw results. The explicit version retains its zero-sign repair.
-This is generated-code evidence, not a measured throughput improvement. The new
-hardware shader graph has RTX qualification. SPIRV-Cross translation produces
+This establishes the generated operations and the tested RTX behavior; no
+throughput measurement accompanies it. SPIRV-Cross translation produces
 Metal source; it does not establish native Metal compilation or execution.
 
 The [directed-rounding shader fixture](../tests/rounding/README.md) separately
@@ -105,9 +111,9 @@ also takes `--common`. Compare packets with `tests/compare_fp32.py`.
 Run `tests/{tanh,log,atan2}/verify_bounds.py` against the current source to check
 the live coefficient words and their exact-rational bounds.
 
-The preceding simultaneous-policy checkpoint separately passed exception-enabled
-Windows consumers and matched-dependency AddressSanitizer checks of admission,
-typed storage, short swizzles and both policy types. The new native math pass
-above is ordinary execution; those older sanitizer results are not relabeled
-as sanitizer coverage of every new function. No iPhone or browser execution is
+The simultaneous-policy record separately covers exception-enabled Windows
+consumers and matched-dependency AddressSanitizer checks of admission, typed
+storage, short swizzles and both policy types. The native math pass above is
+ordinary execution; its additional functions do not inherit those earlier
+sanitizer results. No iPhone or browser execution is
 established by these Windows and M3 checks.

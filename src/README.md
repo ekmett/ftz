@@ -1,4 +1,4 @@
-# Source layout
+# Arithmetic and module boundaries
 
 Applications import `ftz` for the numerical types and math. The separate
 `ftz.controls` module supplies floating-point environment management without
@@ -25,12 +25,12 @@ policy; that customization composes with the supported native architectures.
 The dependency remains one way. Array math kernels expose independent register
 chains without depending on the `wide` container itself.
 
-Manual and hardware arithmetic must describe the same results for admitted
-inputs. Hardware policy removes flushing which its established FP environment
+Manual and hardware policies describe the same arithmetic results under their
+respective admitted environments, with NaN sign and payload left unspecified. Hardware policy removes flushing which its established FP environment
 already performs. Boundary repairs remain where hardware differs in underflow
 rounding or signed-zero behavior. Shared integer helpers that implement these
-production repairs belong here; proof tools, captured outputs, code-generation
-probes and regression drivers belong under `tests`.
+production repairs belong here; coefficient checks, numerical regressions and code-generation probes exercise
+those definitions from `tests`.
 
 HLSL remains at language version 2021. Its portable integer implementation uses
 32-bit words; `FTZ_SHADER_INT64` selects the alternative where native 64-bit
