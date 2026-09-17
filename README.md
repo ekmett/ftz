@@ -70,8 +70,10 @@ exception settings and profile selection must agree across the dependency graph.
 - [Source and module boundaries](src/README.md)
 - [Compiled API examples](tests/api/README.md)
 
-The API reference is generated with Doxygen from the public interfaces and
-example snippets. [Documentation build commands](docs/building.md#api-reference)
+The [C++ API](https://ekmett.github.io/ftz/) and
+[HLSL API](https://ekmett.github.io/ftz/shaders/) references are generated on GitHub
+with Doxygen from the public interfaces and
+example snippets. [Documentation build commands](docs/building.md)
 cover the separate C++ and HLSL references.
 
 FTZ is dual-licensed under BSD-2-Clause and Apache-2.0. See

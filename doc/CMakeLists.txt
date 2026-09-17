@@ -98,6 +98,8 @@ set(DOXYGEN_XML_OUTPUT "xml-shaders")
 set(DOXYGEN_WARN_LOGFILE "${PROJECT_BINARY_DIR}/docs/shader-warnings.log")
 doxygen_add_docs(ftz_shader_docs "${PROJECT_SOURCE_DIR}/src/hlsl"
   COMMENT "Build ftz HLSL API documentation")
+# The shader site is nested beneath the host output; create its parent first.
+add_dependencies(ftz_shader_docs ftz_host_docs)
 add_custom_target(ftz_docs DEPENDS ftz_host_docs ftz_shader_docs)
 
 # Module summaries need aliases for Doxygen 1.18 crawler/navigation destinations.

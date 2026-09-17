@@ -72,3 +72,9 @@ numerical or device qualification.
 See [the compiled examples](../tests/api/README.md) for standalone consumer
 commands, [arithmetic and thread controls](arithmetic.md) for runtime obligations,
 and [shader headers](shaders.md) for a language-free package.
+
+The [Documentation workflow](https://github.com/ekmett/ftz/blob/main/.github/workflows/docs.yml) builds both references
+on pull requests and publishes them to [GitHub Pages](https://ekmett.github.io/ftz/)
+after a push to main. It pins Doxygen and the SIMD dependency, treats documentation
+warnings as errors, and checks generated links before uploading the site.
+Generated HTML stays in the build and deployment artifacts, outside the source tree.

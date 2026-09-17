@@ -26,6 +26,6 @@ and a compute entry point. The [installed shader consumer](../tests/shaders/READ
 checks exported include roots and header dependency tracking after relocation.
 
 DXC compilation, SPIR-V validation and SPIRV-Cross translation establish a
-compiler path. The [device records](validation.md#shader-evidence) separately
+compiler path. The [device records](validation.md) separately
 state the RTX and native Metal execution scope, guards and permitted differences.
 They are not throughput measurements or a claim about every GPU.
