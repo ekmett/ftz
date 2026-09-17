@@ -67,9 +67,12 @@ policy in gradual/flush modes and hardware policy in flush mode. This qualifies
 the rounding operations independently of ambient rounding; other arithmetic
 retains its nearest-even contract.
 
-These focused Windows checks supplement the math packets above. The retained
-M3 evidence here covers the earlier math configuration; this section adds no
-NEON utility or directed-rounding qualification.
+These focused checks supplement the earlier math packets. A separate Apple M3
+installed-consumer run passes thirteen focused tests and one transitive-library
+test with exceptions enabled, PCH and ThinLTO. It covers both policies and all
+four rounding modes; the original 2,208-word arithmetic/function golden remains
+unchanged. Source and dependency hashes match before and after execution. This
+extends utility and rounding coverage without rerunning the larger math packets.
 
 ## Shader evidence
 
@@ -88,14 +91,31 @@ The hardware admission shader has one `OpFAdd` and one `OpFSub`; its wrapped
 outputs reuse the raw results. The explicit version retains its zero-sign repair.
 This establishes the generated operations and the tested RTX behavior; no
 throughput measurement accompanies it. SPIRV-Cross translation produces
-Metal source; it does not establish native Metal compilation or execution.
+Metal source; the translation check alone does not establish device behavior.
+The separate native Metal qualification below exercises the generated shaders.
 
 The [directed-rounding shader fixture](../tests/rounding/README.md) separately
 passes 276 records per policy on RTX 4090. All non-NaN floor/ceil/trunc words,
 including signed zero, and input echoes match the integer oracle; input/tail
 guards and Vulkan validation pass. This is sampled device evidence for that
 shader source. DXC HLSL 2021 compilation, SPIR-V validation and translation to
-Metal source also pass, without native Metal compilation or execution.
+Metal source also pass. Native Metal execution is recorded separately below.
+
+### Native Metal
+
+On Apple M3 with macOS 15.5, the corresponding native Metal bank passes all
+24 cases: twenty arithmetic/function policy and integer-width variants, two
+signed-add admission cases, and two directed-rounding cases. The latter four
+use the 64-bit integer implementation. Across 737,332 records (2,949,328 fields),
+every required word matches the reference bank. The two rounding cases contain
+24 permitted NaN representation differences; input echoes remain exact.
+
+Input and output-tail guards pass, with Metal API and GPU validation enabled
+and no validation diagnostics. The build uses Clang 23.1.1 for the unchanged
+native runner and Metal 3.2 without fast math. Generated 32-bit-word shaders
+emit sixty unused-variable warnings; those warnings are retained in the record.
+This qualifies the frozen shader banks, not a full application build or a
+throughput claim.
 
 The shader-only installed-package consumer also compiles four policy/integer
 variants from a relocated prefix without loading either host archive. Its build

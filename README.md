@@ -184,3 +184,21 @@ scopes, vector memory, masks, arrays, wide math and a complete shader entry.
 The [source guide](src/README.md) explains the module and shader boundaries.
 See [validation](docs/validation.md) for measured cross-architecture agreement,
 shader evidence, and the limits of those checks.
+
+## API documentation
+
+Doxygen 1.18 builds separate host and HLSL references from the public interfaces,
+with compiled example snippets. An installed SIMD header package is enough for
+a documentation-only build:
+
+```sh
+cmake -S . -B build/docs -G Ninja -DFTZ_BUILD_HOST=OFF -DFTZ_BUILD_DOCS=ON \
+  -DCMAKE_PREFIX_PATH=/path/to/simd
+cmake --build build/docs --target ftz_docs
+```
+
+Open `build/docs/docs/html/index.html` for C++, and
+`build/docs/docs/html/shaders/index.html` for HLSL. Warnings fail the build.
+Compile the [example projects](tests/api/README.md) separately to check the
+snippets against an installed package; documentation generation is not a
+numerical or device qualification.

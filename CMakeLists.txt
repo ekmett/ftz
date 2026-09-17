@@ -3,6 +3,7 @@
 cmake_minimum_required(VERSION 4.4)
 project(ftz VERSION 0.0.1 LANGUAGES NONE)
 option(FTZ_BUILD_HOST "Build the C++26 module and archive" ON)
+option(FTZ_BUILD_DOCS "Build API documentation (requires Doxygen)" OFF)
 option(FTZ_BUILD_TESTS "Build numerical and module regression tests" ${PROJECT_IS_TOP_LEVEL})
 option(FTZ_ENABLE_PCH "Precompile common module headers" OFF)
 option(FTZ_ENABLE_IPO "Enable interprocedural optimization" OFF)
@@ -22,6 +23,9 @@ else()
 endif()
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+if(FTZ_BUILD_DOCS)
+  add_subdirectory(doc)
+endif()
 
 # Shader users need the attributes/header dependency, never a CPU module or ISA.
 add_library(ftz_hlsl INTERFACE)
