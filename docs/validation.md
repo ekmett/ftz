@@ -44,10 +44,19 @@ redundant FTZ operations; it does not promise every operation is one instruction
 A separate RTX 4090 execution bank passed twenty exact controls: arithmetic,
 trigonometric/exponential functions, atan2, tanh and logarithms, each under both
 FTZ policies and both 32/64-bit integer implementations. Input and output guards
-and Vulkan validation passed. The combined host-math changes leave all twenty
-optimized SPIR-V files and their generated Metal sources byte-identical to that
-executed checkpoint. Generated Metal source is compiler evidence, not a new
-Metal device execution claim.
+and Vulkan validation passed. The original combined host-math checkpoint left the executed shader artifacts
+unchanged. A subsequent shader optimization removes tiny add/subtract repair
+from the admitted hardware variant; the twenty RTX cases were rerun and passed.
+Its separate [signed-add admission bank](../tests/shader_add/README.md) passes
+96,916 records against an integer-exact RNE-then-FTZ oracle, including raw and
+wrapped add/subtract. Input and output guards and validation remain clean.
+The same oracle also agrees with all 87,772 original addition records.
+
+The hardware admission shader has one `OpFAdd` and one `OpFSub`; its wrapped
+outputs reuse the raw results. The explicit version retains its zero-sign repair.
+This is generated-code evidence, not a measured throughput improvement. The new
+hardware shader graph has RTX qualification; generated Metal source is compiler
+evidence, not a new Metal device execution claim.
 
 The shader-only installed-package consumer also compiles four policy/integer
 variants from a relocated prefix without loading either host archive. Its build

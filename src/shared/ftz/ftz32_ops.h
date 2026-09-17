@@ -52,19 +52,19 @@ namespace ftz { namespace detail {
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
   simd_nodiscard simd_inline simd_const unsigned int ftz32_add(unsigned int a, unsigned int b) {
-#ifdef __cplusplus
+    // Hardware admission includes signed flushing of tiny add/sub results.
     return ftz32_add_policy<Hardware>(a, b);
-#else
-    // Shader profiles have not yet admitted raw tiny-add zero signs. Retain
-    // that repair until the device/compiler graph is separately qualified.
-    return ftz32_add_policy<false>(a, b);
-#endif
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
   simd_nodiscard simd_inline simd_const unsigned int ftz32_sub(unsigned int a, unsigned int b) {
+    if (Hardware) {
 #ifdef __cplusplus
-    if (Hardware) return ::ftz::detail::math::fp32_encode(::ftz::detail::math::fp32_decode(a) - ::ftz::detail::math::fp32_decode(b));
+      return ::ftz::detail::math::fp32_encode(::ftz::detail::math::fp32_decode(a) - ::ftz::detail::math::fp32_decode(b));
+#else
+      precise float value = asfloat(a) - asfloat(b);
+      return asuint(value);
 #endif
+    }
     return ftz32_add<Hardware>(a, ftz32_neg(b));
   }
   simd_nodiscard simd_inline simd_const unsigned int ftz32_mul(unsigned int a, unsigned int b) {

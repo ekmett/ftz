@@ -58,7 +58,9 @@ without changing a NaN payload. Generic `simd::wide` forwarding retains that
 mask type for each register, or `bool` when the element is scalar.
 
 The common scalar/vector/wide math surface includes `abs`, `sqrt`, `sin`, `cos`,
-`sincos`, `exp`, `expm1`, `log`, `log1p`, `tanh`, `atan2` and `fma`. Binary and
+`sincos`, `exp`, `expm1`, `log`, `log1p`, `tanh`, `atan2`, `floor`, `ceil`,
+`trunc` and `fma`. Rounding functions use their named direction independently of
+the ambient rounding mode and retain signed zero. Binary and
 ternary wide math takes matching wide operands; broadcast a scalar explicitly.
 Vector `atan2` and `copysign` likewise take matching vector types. This is a
 numerical type with a defined math surface, not a complete replacement for every
@@ -146,8 +148,13 @@ public shader include directories, and the `simd::headers` dependency. Configure
 entry points and compiler invocations; `ftz::hlsl` is a header library.
 
 HLSL includes `<ftz/ftz32.h>` and uses `ftz::ftz32`. Compile in HLSL 2021 mode.
+`ftz::floor`, `ftz::ceil` and `ftz::trunc` use the corresponding shader intrinsics
+and preserve the wrapper type without an additional normalization pass.
 `FTZ_FP32_HARDWARE_FTZ=0` retains explicit normalization; `=1` selects the admitted
-hardware path. Choose the compiled shader variant after device qualification.
+hardware path. Choose the compiled shader variant after device qualification, including
+[signed tiny-result add/subtract checks](tests/shader_add/README.md).
+The hardware path uses native addition/subtraction directly; a failed raw sign
+check requires the explicit variant.
 This is independent of the CPU type or CPU environment. `FTZ_SHADER_INT64` selects
 native 64-bit integer support where available, with 32-bit word operations as the
 portable alternative.

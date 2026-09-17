@@ -161,6 +161,18 @@ export namespace ftz {
   template <bool Hardware>
   simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> sqrt(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_sqrt(a.to_bits()))); }
   template <bool Hardware>
+  simd_nodiscard simd_inline basic_ftz32<Hardware> floor(basic_ftz32<Hardware> a) noexcept {
+    return basic_ftz32<Hardware>::unsafe_from_float32(std::floor(a.to_float()));
+  }
+  template <bool Hardware>
+  simd_nodiscard simd_inline basic_ftz32<Hardware> ceil(basic_ftz32<Hardware> a) noexcept {
+    return basic_ftz32<Hardware>::unsafe_from_float32(std::ceil(a.to_float()));
+  }
+  template <bool Hardware>
+  simd_nodiscard simd_inline basic_ftz32<Hardware> trunc(basic_ftz32<Hardware> a) noexcept {
+    return basic_ftz32<Hardware>::unsafe_from_float32(std::trunc(a.to_float()));
+  }
+  template <bool Hardware>
   simd_nodiscard constexpr simd_inline simd_const basic_ftz32<Hardware> abs(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_abs(a.to_bits()))); }
   template <bool Hardware>
   simd_nodiscard constexpr simd_inline simd_const basic_ftz32<Hardware> neg(basic_ftz32<Hardware> a) noexcept { return -a; }
@@ -231,6 +243,21 @@ export namespace ftz {
   simd_nodiscard constexpr simd_inline auto sqrt(T && a)
     noexcept(noexcept(sqrt(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return sqrt(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard simd_inline auto floor(T && a)
+    noexcept(noexcept(floor(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return floor(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard simd_inline auto ceil(T && a)
+    noexcept(noexcept(ceil(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return ceil(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+  }
+  template <class T> requires detail::scalar_argument<T &&>
+  simd_nodiscard simd_inline auto trunc(T && a)
+    noexcept(noexcept(trunc(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return trunc(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
   template <class T> requires detail::scalar_argument<T &&>
   simd_nodiscard constexpr simd_inline auto abs(T && a)

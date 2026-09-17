@@ -933,3 +933,37 @@ export namespace ftz {
       (magnitude.to_bits() & U(0x7fffffffu)) | (sign.to_bits() & U(0x80000000u))));
   }
 }
+
+export namespace ftz {
+  // Integral-valued results cannot be subnormal; preserve the raw rounding result.
+  template<detail::ftz32_vector R>
+  simd_nodiscard simd_inline R floor(R value) noexcept {
+    using simd::floor;
+    return R::unsafe_from_float32(floor(value.to_native()));
+  }
+  template<detail::ftz32_value R,std::size_t N>
+  simd_nodiscard simd_inline std::array<R,N> floor(std::array<R,N> const & input) noexcept {
+    auto const & [...value]=input;
+    return {{floor(value)...}};
+  }
+  template<detail::ftz32_vector R>
+  simd_nodiscard simd_inline R ceil(R value) noexcept {
+    using simd::ceil;
+    return R::unsafe_from_float32(ceil(value.to_native()));
+  }
+  template<detail::ftz32_value R,std::size_t N>
+  simd_nodiscard simd_inline std::array<R,N> ceil(std::array<R,N> const & input) noexcept {
+    auto const & [...value]=input;
+    return {{ceil(value)...}};
+  }
+  template<detail::ftz32_vector R>
+  simd_nodiscard simd_inline R trunc(R value) noexcept {
+    using simd::trunc;
+    return R::unsafe_from_float32(trunc(value.to_native()));
+  }
+  template<detail::ftz32_value R,std::size_t N>
+  simd_nodiscard simd_inline std::array<R,N> trunc(std::array<R,N> const & input) noexcept {
+    auto const & [...value]=input;
+    return {{trunc(value)...}};
+  }
+}

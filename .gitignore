@@ -15,3 +15,5 @@ Testing
 .ipynb_checkpoints/
 tags
 nohup.out
+__pycache__/
+*.pyc

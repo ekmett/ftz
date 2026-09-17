@@ -121,6 +121,16 @@ namespace ftz {
     result.bits_ = detail::ftz32_sqrt(value.bits_);
     return result;
   }
+  // Rounding canonical inputs produces zero or an integer, never a subnormal.
+  ftz32 floor(ftz32 value) {
+    return ftz32::unsafe_from_float32(floor(value.to_float()));
+  }
+  ftz32 ceil(ftz32 value) {
+    return ftz32::unsafe_from_float32(ceil(value.to_float()));
+  }
+  ftz32 trunc(ftz32 value) {
+    return ftz32::unsafe_from_float32(trunc(value.to_float()));
+  }
   ftz32 sin(ftz32 value) {
     ftz32 result;
     result.bits_ = detail::ftz32_sin(value.bits_);
