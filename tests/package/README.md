@@ -14,3 +14,11 @@ a host admitted for the selected ISA.
 Use separate relocated installation prefixes for SIMD and FTZ. No repository
 include directory or prebuilt PCM is accepted as an extra input. Inspect the
 final link command to verify that both dependency archives were selected.
+
+The Linux AVX2 qualification uses Clang 23.1.1, libc++ 23, CMake 4.4.3 and
+exceptions enabled in both installed dependencies. Supply the same
+`-DCMAKE_CXX_FLAGS=-stdlib=libc++` and LLVM runtime-library search configuration
+when configuring this consumer; mixing standard libraries is not covered.
+The recorded PCH/ThinLTO transitive consumer passes after both prefixes move.
+See [validation](../../docs/validation.md#linux-installed-cpu-packages) for the
+source revisions and execution limits.

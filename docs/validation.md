@@ -74,6 +74,26 @@ four rounding modes; the original 2,208-word arithmetic/function golden remains
 unchanged. Source and dependency hashes match before and after execution. This
 extends utility and rounding coverage without rerunning the larger math packets.
 
+## Linux installed CPU packages
+
+Exact source `3e2da97` passes 23 host tests and one relocated third-static-library
+consumer on an Intel Core i9-12900K running Ubuntu 22.04/glibc 2.35. Both use the
+relocated SIMD `4255f00` package, LLVM 23.1.1 with its bundled libc++ 23,
+CMake 4.4.3, exceptions enabled, PCH and ThinLTO. The consumer imports its own
+module and obtains both dependency archives through the exported package graph.
+
+The configured compatibility alias selects manual policy. Both explicit policy
+types remain present: `m32` runs under gradual and flush controls, and admitted
+`h32` runs under flush controls. Tests include admission, conversion contracts,
+short vectors, classification, rounding and native math. Source and installed
+file hashes are unchanged after execution, old installation paths are absent,
+and consumer compile commands contain no production source-checkout paths.
+
+Only AVX2 kernels execute on this host. The SIMD dependency additionally compiles
+its AVX-512 provider, without executing it. This extends Linux CPU/package
+coverage; it adds no cross-host packet-equality, shader, sanitizer or throughput
+claim to the separately recorded results.
+
 ## Shader evidence
 
 The RTX 4090 execution bank passed twenty exact controls: arithmetic,

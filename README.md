@@ -183,7 +183,9 @@ individual source notices for retained upstream terms.
 scopes, vector memory, masks, arrays, wide math and a complete shader entry.
 The [source guide](src/README.md) explains the module and shader boundaries.
 See [validation](docs/validation.md) for measured cross-architecture agreement,
-shader evidence, and the limits of those checks.
+shader evidence, and the limits of those checks. The Linux AVX2 package check
+uses LLVM 23.1.1/libc++ 23 and relocated SIMD/FTZ prefixes; its CPU scope is
+separate from the shader and cross-host packet records.
 
 ## API documentation
 
