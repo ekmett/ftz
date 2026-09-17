@@ -39,6 +39,32 @@ spill registers. General multiply/FMA retain rare tiny-result repairs required
 to reconcile supported underflow rounding boundaries. Hardware policy removes
 redundant FTZ operations; it does not promise every operation is one instruction.
 
+## Value utilities, directed rounding and installed packages
+
+A subsequent Windows qualification uses matching SIMD and FTZ packages built
+with exceptions enabled, PCH and ThinLTO. The core passes 35 tests and one
+relocated consumer. Focused FTZ consumers pass on both AVX2 and AVX-512:
+
+| Installed consumer | Result |
+| --- | --- |
+| Native and wide classification/sign transport | Four tests passed |
+| Directed rounding | Two tests passed |
+| Policy boundaries | Four tests passed |
+| Third static library, PCH and ThinLTO | One test passed per ISA |
+
+Classification preserves each vector's actual mask type, including through
+`wide`. Sign transport and short swizzles preserve signed zeros and NaN payloads
+without changing FP status. `floor`, `ceil` and `trunc` retain the selected FTZ
+type through scalar, vector, array and wide operations. Their independent
+integer-word oracle runs under all four standard rounding modes, with manual
+policy in gradual/flush modes and hardware policy in flush mode. This qualifies
+the rounding operations independently of ambient rounding; other arithmetic
+retains its nearest-even contract.
+
+These are later focused checks, not reruns of every historical math packet.
+No new NEON execution of these value utilities or directed rounding is recorded;
+the M3 math results above retain their original scope.
+
 ## Shader evidence
 
 A separate RTX 4090 execution bank passed twenty exact controls: arithmetic,
@@ -55,8 +81,15 @@ The same oracle also agrees with all 87,772 original addition records.
 The hardware admission shader has one `OpFAdd` and one `OpFSub`; its wrapped
 outputs reuse the raw results. The explicit version retains its zero-sign repair.
 This is generated-code evidence, not a measured throughput improvement. The new
-hardware shader graph has RTX qualification; generated Metal source is compiler
-evidence, not a new Metal device execution claim.
+hardware shader graph has RTX qualification. SPIRV-Cross translation produces
+Metal source; it does not establish native Metal compilation or execution.
+
+The [directed-rounding shader fixture](../tests/rounding/README.md) separately
+passes 276 records per policy on RTX 4090. All non-NaN floor/ceil/trunc words,
+including signed zero, and input echoes match the integer oracle; input/tail
+guards and Vulkan validation pass. This is sampled device evidence for that
+shader source. DXC HLSL 2021 compilation, SPIR-V validation and translation to
+Metal source also pass, without native Metal compilation or execution.
 
 The shader-only installed-package consumer also compiles four policy/integer
 variants from a relocated prefix without loading either host archive. Its build
