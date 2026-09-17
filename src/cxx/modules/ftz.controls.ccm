@@ -27,6 +27,7 @@ export namespace ftz {
   /// \brief Opaque native control/status snapshot, suitable for exact restoration checks.
   struct native_fp_state {
     std::uint64_t control, status;
+    /// \brief Compares both control and status words exactly.
     friend bool operator==(native_fp_state const &, native_fp_state const &) = default;
   };
   /// \ingroup ftz_environment
@@ -66,9 +67,13 @@ export namespace ftz {
     explicit native_fp32_scope(native_fp32_mode mode);
     /// \brief Restores the complete saved state on the constructing thread.
     ~native_fp32_scope() noexcept;
+    /// \brief Disallows transfer of a guard whose restoration belongs to its constructing thread.
     native_fp32_scope(native_fp32_scope const &) = delete;
+    /// \brief Disallows transfer of a guard whose restoration belongs to its constructing thread.
     native_fp32_scope & operator=(native_fp32_scope const &) = delete;
+    /// \brief Disallows transfer of a guard whose restoration belongs to its constructing thread.
     native_fp32_scope(native_fp32_scope &&) = delete;
+    /// \brief Disallows transfer of a guard whose restoration belongs to its constructing thread.
     native_fp32_scope & operator=(native_fp32_scope &&) = delete;
     /// \brief Returns the state captured before this numerical region.
     native_fp_state previous() const noexcept { return previous_; }
@@ -91,9 +96,13 @@ export namespace ftz {
       explicit external_scope(native_fp32_scope const & region) noexcept;
       /// \brief Restores the numerical state captured by this external-call guard.
       ~external_scope() noexcept;
+      /// \brief Disallows transfer of a guard whose restoration belongs to its constructing thread.
       external_scope(external_scope const &) = delete;
+      /// \brief Disallows transfer of a guard whose restoration belongs to its constructing thread.
       external_scope & operator=(external_scope const &) = delete;
+      /// \brief Disallows transfer of a guard whose restoration belongs to its constructing thread.
       external_scope(external_scope &&) = delete;
+      /// \brief Disallows transfer of a guard whose restoration belongs to its constructing thread.
       external_scope & operator=(external_scope &&) = delete;
     };
   };

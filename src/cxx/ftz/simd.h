@@ -203,12 +203,12 @@ export namespace simd {
     simd_inline simd_customization(native_type value) noexcept requires (N>1) : simd_customization(V(value)) {}
     /// \brief Returns native storage unchanged; subsequent native arithmetic leaves the FTZ contract.
     simd_inline operator native_type() const noexcept { return value_.value; }
-    template <class... X> requires (sizeof...(X)==N && N>1) && (std::convertible_to<X,ftz32> && ...)
     /// \brief Imports one value per lane; conversion exceptions determine noexcept.
+    template <class... X> requires (sizeof...(X)==N && N>1) && (std::convertible_to<X,ftz32> && ...)
     simd_inline simd_customization(X... x) noexcept((noexcept(static_cast<float>(x)) && ...))
       : simd_customization(V(static_cast<float>(x)...)) {}
-    template <class T> requires (std::same_as<T,float> || std::same_as<T,ftz32>)
     /// \brief Loads exactly N float or same-policy FTZ elements.
+    template <class T> requires (std::same_as<T,float> || std::same_as<T,ftz32>)
     simd_inline simd_customization(std::array<T,N> const & values) noexcept : value_(load_memory(values.data()).to_native()) {}
 
     /// \brief Returns the raw float register with every stored bit unchanged.
@@ -239,9 +239,9 @@ export namespace simd {
     simd_nodiscard static simd_inline simd_const simd from_bits(std::uint32_t value) noexcept {
       return from_bits(bits_type(value));
     }
-    template <std::size_t Alignment = 1, class T> requires (std::same_as<T,float> || std::same_as<T,ftz32>)
     /// \brief Loads exactly N elements; float memory is normalized, same-policy FTZ memory is
     /// copied exactly.
+    template <std::size_t Alignment = 1, class T> requires (std::same_as<T,float> || std::same_as<T,ftz32>)
     simd_nodiscard static simd_inline simd load_memory(T const * p) noexcept {
       if constexpr (std::same_as<T,float>) return simd(V::template load_memory<Alignment>(p));
       else {
@@ -250,8 +250,8 @@ export namespace simd {
         return unsafe_from_float32(V::from_bits(bits_type::load(words.data())));
       }
     }
-    template <std::size_t Alignment = 1, class T> requires (std::same_as<T,float> || std::same_as<T,ftz32>)
     /// \brief Stores exactly N float or same-policy FTZ elements, preserving stored bits.
+    template <std::size_t Alignment = 1, class T> requires (std::same_as<T,float> || std::same_as<T,ftz32>)
     simd_inline void store_memory(T * p) const noexcept {
       if constexpr (std::same_as<T,float>) value_.template store_memory<Alignment>(p);
       else {
@@ -354,19 +354,19 @@ export namespace simd {
     /// \brief Compares lanes after conversion to this policy, returning the
     /// architecture-native mask type.
     simd_nodiscard friend simd_inline simd_const mask_type operator>=(simd a, simd b) noexcept { return (a > b) | (a == b); }
-    template<class M> requires (std::same_as<M,mask_type> || std::same_as<M,vector_mask_type>)
     /// \brief Selects complete lanes from a when the mask is true, otherwise b, preserving exact words.
+    template<class M> requires (std::same_as<M,mask_type> || std::same_as<M,vector_mask_type>)
     simd_nodiscard friend simd_inline simd_const simd select(M mask,simd a,simd b) noexcept {
       // Both mask domains select whole lanes, preserving chosen NaN payloads.
       return {canonical{},select(mask,a.value_,b.value_)};
     }
+    /// \brief Scales active lanes by 2^floor(exponent), preserving prior lanes elsewhere
+    /// under the FTZ contract.
     template <class M, class A, class B, class E>
       requires (std::same_as<M,mask_type> || std::same_as<M,vector_mask_type>) &&
         (std::same_as<A,simd> || std::same_as<B,simd>) &&
         std::convertible_to<A,simd> && std::convertible_to<B,simd> &&
         (std::same_as<E,simd> || std::convertible_to<E,V>)
-    /// \brief Scales active lanes by 2^floor(exponent), preserving prior lanes elsewhere
-    /// under the FTZ contract.
     simd_nodiscard friend simd_inline simd masked_scaleb(
         M active, A prior, B value, E exponent)
         noexcept(noexcept(simd(prior)) && noexcept(simd(value)) &&
@@ -376,19 +376,19 @@ export namespace simd {
       V result = masked_scaleb(active, imported_prior.value_, imported_value.value_, shift);
       return {canonical{},::ftz::detail::ftz32_scaled_result<Hardware>(active,result,imported_value.value_,shift)};
     }
+    /// \brief Scales active lanes by 2^floor(exponent) and returns positive zero in inactive lanes.
     template <class M, class A, class E>
       requires (std::same_as<M,mask_type> || std::same_as<M,vector_mask_type>) &&
         std::same_as<A,simd> && (std::same_as<E,simd> || std::convertible_to<E,V>)
-    /// \brief Scales active lanes by 2^floor(exponent) and returns positive zero in inactive lanes.
     simd_nodiscard friend simd_inline simd masked_scaleb_zero(
         M active, A value, E exponent) noexcept(noexcept(scaling_exponent(exponent))) {
       V shift = scaling_exponent(exponent);
       V result = masked_scaleb_zero(active,value.value_,shift);
       return {canonical{},::ftz::detail::ftz32_scaled_result<Hardware>(active,result,value.value_,shift)};
     }
+    /// \brief Scales each lane by 2^floor(exponent), retaining the FTZ result and boundary repair.
     template <class A, class E> requires std::same_as<A,simd> &&
       (std::same_as<E,simd> || std::convertible_to<E,V>)
-    /// \brief Scales each lane by 2^floor(exponent), retaining the FTZ result and boundary repair.
     simd_nodiscard friend simd_inline simd scaleb(A value, E exponent)
         noexcept(noexcept(scaling_exponent(exponent))) {
       V shift = scaling_exponent(exponent);
@@ -397,24 +397,24 @@ export namespace simd {
     }
     // An FTZ exponent alone does not change a raw base's arithmetic contract.
     // Explicit forwarding also prevents competing implicit native conversions.
+    /// \brief Forwards an FTZ exponent to raw scaling; the raw base and result retain their
+    /// raw arithmetic contract.
     template <class M, class A, class B>
       requires (std::same_as<M,mask_type> || std::same_as<M,vector_mask_type>) &&
         std::same_as<A,V> && std::same_as<B,V>
-    /// \brief Forwards an FTZ exponent to raw scaling; the raw base and result retain their
-    /// raw arithmetic contract.
     simd_nodiscard friend simd_inline simd_const V masked_scaleb(
         M active, A prior, B value, simd exponent) noexcept {
       return masked_scaleb(active,prior,value,exponent.value_);
     }
+    /// \brief Forwards an FTZ exponent to raw masked scaling with inactive lanes zeroed.
     template <class M, class A>
       requires (std::same_as<M,mask_type> || std::same_as<M,vector_mask_type>) && std::same_as<A,V>
-    /// \brief Forwards an FTZ exponent to raw masked scaling with inactive lanes zeroed.
     simd_nodiscard friend simd_inline simd_const V masked_scaleb_zero(
         M active, A value, simd exponent) noexcept {
       return masked_scaleb_zero(active,value,exponent.value_);
     }
-    template <class A> requires std::same_as<A,V>
     /// \brief Forwards an FTZ exponent to raw scaling without changing the raw base or result contract.
+    template <class A> requires std::same_as<A,V>
     simd_nodiscard friend simd_inline simd_const V scaleb(A value, simd exponent) noexcept {
       return scaleb(value,exponent.value_);
     }
@@ -423,24 +423,24 @@ export namespace simd {
     simd_nodiscard friend simd_inline simd_const simd sqrt(simd a) noexcept {
       return {canonical{}, ::ftz::detail::ftz32_vector_sqrt(a.value_)};
     }
-    template <class A, class B> requires std::convertible_to<A, simd> && std::convertible_to<B, simd>
     /// \brief Evaluates fused a*b+c in this FTZ policy; converting operands can throw as
     /// specified by noexcept.
+    template <class A, class B> requires std::convertible_to<A, simd> && std::convertible_to<B, simd>
     simd_nodiscard friend simd_inline simd fma(simd a, A b, B c)
         noexcept(noexcept(simd(b)) && noexcept(simd(c))) {
       return fused(a, simd(b), simd(c));
     }
-    template <class A, class B> requires (!std::same_as<A, simd>) && std::convertible_to<A, simd> && std::convertible_to<B, simd>
     /// \brief Evaluates fused a*b+c in this FTZ policy; converting operands can throw as
     /// specified by noexcept.
+    template <class A, class B> requires (!std::same_as<A, simd>) && std::convertible_to<A, simd> && std::convertible_to<B, simd>
     simd_nodiscard friend simd_inline simd fma(A a, simd b, B c)
         noexcept(noexcept(simd(a)) && noexcept(simd(c))) {
       return fused(simd(a), b, simd(c));
     }
-    template <class A, class B> requires (!std::same_as<A, simd>) && (!std::same_as<B, simd>) &&
-        std::convertible_to<A, simd> && std::convertible_to<B, simd>
     /// \brief Evaluates fused a*b+c in this FTZ policy; converting operands can throw as
     /// specified by noexcept.
+    template <class A, class B> requires (!std::same_as<A, simd>) && (!std::same_as<B, simd>) &&
+        std::convertible_to<A, simd> && std::convertible_to<B, simd>
     simd_nodiscard friend simd_inline simd fma(A a, B b, simd c)
         noexcept(noexcept(simd(a)) && noexcept(simd(b))) {
       return fused(simd(a), simd(b), c);
@@ -448,104 +448,104 @@ export namespace simd {
 
     // Mixed operands select this value contract instead of escaping via the
     // deliberately implicit native-register conversion. No runtime dispatch.
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Evaluates lane arithmetic in this FTZ policy; converting operands retain their
     /// conditional noexcept.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline simd operator+(simd a, T b)
         noexcept(noexcept(a + simd(b))) { return a + simd(b); }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Evaluates lane arithmetic in this FTZ policy; converting operands retain their
     /// conditional noexcept.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline simd operator+(T a, simd b)
         noexcept(noexcept(simd(a) + b)) { return simd(a) + b; }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Evaluates lane arithmetic in this FTZ policy; converting operands retain their
     /// conditional noexcept.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline simd operator-(simd a, T b)
         noexcept(noexcept(a - simd(b))) { return a - simd(b); }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Evaluates lane arithmetic in this FTZ policy; converting operands retain their
     /// conditional noexcept.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline simd operator-(T a, simd b)
         noexcept(noexcept(simd(a) - b)) { return simd(a) - b; }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Evaluates lane arithmetic in this FTZ policy; converting operands retain their
     /// conditional noexcept.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline simd operator*(simd a, T b)
         noexcept(noexcept(a * simd(b))) { return a * simd(b); }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Evaluates lane arithmetic in this FTZ policy; converting operands retain their
     /// conditional noexcept.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline simd operator*(T a, simd b)
         noexcept(noexcept(simd(a) * b)) { return simd(a) * b; }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Evaluates lane arithmetic in this FTZ policy; converting operands retain their
     /// conditional noexcept.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline simd operator/(simd a, T b)
         noexcept(noexcept(a / simd(b))) { return a / simd(b); }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Evaluates lane arithmetic in this FTZ policy; converting operands retain their
     /// conditional noexcept.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline simd operator/(T a, simd b)
         noexcept(noexcept(simd(a) / b)) { return simd(a) / b; }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Compares lanes after conversion to this policy, returning the
     /// architecture-native mask type.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline mask_type operator<(simd a, T b)
         noexcept(noexcept(a < simd(b))) { return a < simd(b); }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Compares lanes after conversion to this policy, returning the
     /// architecture-native mask type.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline mask_type operator<(T a, simd b)
         noexcept(noexcept(simd(a) < b)) { return simd(a) < b; }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Compares lanes after conversion to this policy, returning the
     /// architecture-native mask type.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline mask_type operator>(simd a, T b)
         noexcept(noexcept(a > simd(b))) { return a > simd(b); }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Compares lanes after conversion to this policy, returning the
     /// architecture-native mask type.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline mask_type operator>(T a, simd b)
         noexcept(noexcept(simd(a) > b)) { return simd(a) > b; }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Compares lanes after conversion to this policy, returning the
     /// architecture-native mask type.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline mask_type operator==(simd a, T b)
         noexcept(noexcept(a == simd(b))) { return a == simd(b); }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Compares lanes after conversion to this policy, returning the
     /// architecture-native mask type.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline mask_type operator==(T a, simd b)
         noexcept(noexcept(simd(a) == b)) { return simd(a) == b; }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Compares lanes after conversion to this policy, returning the
     /// architecture-native mask type.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline mask_type operator!=(simd a, T b)
         noexcept(noexcept(a != simd(b))) { return a != simd(b); }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Compares lanes after conversion to this policy, returning the
     /// architecture-native mask type.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline mask_type operator!=(T a, simd b)
         noexcept(noexcept(simd(a) != b)) { return simd(a) != b; }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Compares lanes after conversion to this policy, returning the
     /// architecture-native mask type.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline mask_type operator<=(simd a, T b)
         noexcept(noexcept(a <= simd(b))) { return a <= simd(b); }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Compares lanes after conversion to this policy, returning the
     /// architecture-native mask type.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline mask_type operator<=(T a, simd b)
         noexcept(noexcept(simd(a) <= b)) { return simd(a) <= b; }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Compares lanes after conversion to this policy, returning the
     /// architecture-native mask type.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline mask_type operator>=(simd a, T b)
         noexcept(noexcept(a >= simd(b))) { return a >= simd(b); }
-    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     /// \brief Compares lanes after conversion to this policy, returning the
     /// architecture-native mask type.
+    template <class T> requires (!std::same_as<T, simd>) && std::convertible_to<T, simd>
     simd_nodiscard friend simd_inline mask_type operator>=(T a, simd b)
         noexcept(noexcept(simd(a) >= b)) { return simd(a) >= b; }
 
@@ -578,200 +578,200 @@ export namespace simd {
 export namespace ftz {
   // A scalar FTZ operand promotes a raw register even when no FTZ SIMD
   // argument exists for hidden-friend lookup. Never fall back to built-in float.
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns its FTZ
   /// vector rebind.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator+(V a,basic_ftz32<Hardware> b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) + detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns its FTZ
   /// vector rebind.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator+(basic_ftz32<Hardware> a,V b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) + detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns its FTZ
   /// vector rebind.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator-(V a,basic_ftz32<Hardware> b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) - detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns its FTZ
   /// vector rebind.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator-(basic_ftz32<Hardware> a,V b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) - detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns its FTZ
   /// vector rebind.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator*(V a,basic_ftz32<Hardware> b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) * detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns its FTZ
   /// vector rebind.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator*(basic_ftz32<Hardware> a,V b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) * detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns its FTZ
   /// vector rebind.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator/(V a,basic_ftz32<Hardware> b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) / detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns its FTZ
   /// vector rebind.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator/(basic_ftz32<Hardware> a,V b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) / detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns the
   /// native comparison mask.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator<(V a,basic_ftz32<Hardware> b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) < detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns the
   /// native comparison mask.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator<(basic_ftz32<Hardware> a,V b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) < detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns the
   /// native comparison mask.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator>(V a,basic_ftz32<Hardware> b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) > detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns the
   /// native comparison mask.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator>(basic_ftz32<Hardware> a,V b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) > detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns the
   /// native comparison mask.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator==(V a,basic_ftz32<Hardware> b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) == detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns the
   /// native comparison mask.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator==(basic_ftz32<Hardware> a,V b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) == detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns the
   /// native comparison mask.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator!=(V a,basic_ftz32<Hardware> b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) != detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns the
   /// native comparison mask.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator!=(basic_ftz32<Hardware> a,V b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) != detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns the
   /// native comparison mask.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator<=(V a,basic_ftz32<Hardware> b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) <= detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns the
   /// native comparison mask.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator<=(basic_ftz32<Hardware> a,V b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) <= detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns the
   /// native comparison mask.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator>=(V a,basic_ftz32<Hardware> b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) >= detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Imports the raw register into the scalar operand's FTZ policy and returns the
   /// native comparison mask.
+  template <bool Hardware, detail::raw_register V>
   simd_nodiscard simd_inline simd_const auto operator>=(basic_ftz32<Hardware> a,V b) noexcept {
     return detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) >= detail::ftz32_simd<V,basic_ftz32<Hardware>>(b);
   }
   // Compound assignment keeps the destination type, while the FTZ operand
   // still chooses the arithmetic contract before publication to raw storage.
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Evaluates FTZ arithmetic before assigning to the existing raw-register destination.
+  template <bool Hardware, detail::raw_register V>
   simd_inline V & operator+=(V & a,basic_ftz32<Hardware> b) noexcept {
     a=(detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) + detail::ftz32_simd<V,basic_ftz32<Hardware>>(b)).to_native();
     return a;
   }
-  template <detail::raw_register V, detail::ftz32_vector R> requires std::same_as<typename R::register_type,V>
   /// \ingroup ftz_vectors
   /// \brief Evaluates FTZ arithmetic before assigning to the existing raw-register destination.
+  template <detail::raw_register V, detail::ftz32_vector R> requires std::same_as<typename R::register_type,V>
   simd_inline V & operator+=(V & a,R b) noexcept {
     a=(R(a) + R(b)).to_native();
     return a;
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Evaluates FTZ arithmetic before assigning to the existing raw-register destination.
+  template <bool Hardware, detail::raw_register V>
   simd_inline V & operator-=(V & a,basic_ftz32<Hardware> b) noexcept {
     a=(detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) - detail::ftz32_simd<V,basic_ftz32<Hardware>>(b)).to_native();
     return a;
   }
-  template <detail::raw_register V, detail::ftz32_vector R> requires std::same_as<typename R::register_type,V>
   /// \ingroup ftz_vectors
   /// \brief Evaluates FTZ arithmetic before assigning to the existing raw-register destination.
+  template <detail::raw_register V, detail::ftz32_vector R> requires std::same_as<typename R::register_type,V>
   simd_inline V & operator-=(V & a,R b) noexcept {
     a=(R(a) - R(b)).to_native();
     return a;
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Evaluates FTZ arithmetic before assigning to the existing raw-register destination.
+  template <bool Hardware, detail::raw_register V>
   simd_inline V & operator*=(V & a,basic_ftz32<Hardware> b) noexcept {
     a=(detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) * detail::ftz32_simd<V,basic_ftz32<Hardware>>(b)).to_native();
     return a;
   }
-  template <detail::raw_register V, detail::ftz32_vector R> requires std::same_as<typename R::register_type,V>
   /// \ingroup ftz_vectors
   /// \brief Evaluates FTZ arithmetic before assigning to the existing raw-register destination.
+  template <detail::raw_register V, detail::ftz32_vector R> requires std::same_as<typename R::register_type,V>
   simd_inline V & operator*=(V & a,R b) noexcept {
     a=(R(a) * R(b)).to_native();
     return a;
   }
-  template <bool Hardware, detail::raw_register V>
   /// \ingroup ftz_vectors
   /// \brief Evaluates FTZ arithmetic before assigning to the existing raw-register destination.
+  template <bool Hardware, detail::raw_register V>
   simd_inline V & operator/=(V & a,basic_ftz32<Hardware> b) noexcept {
     a=(detail::ftz32_simd<V,basic_ftz32<Hardware>>(a) / detail::ftz32_simd<V,basic_ftz32<Hardware>>(b)).to_native();
     return a;
   }
-  template <detail::raw_register V, detail::ftz32_vector R> requires std::same_as<typename R::register_type,V>
   /// \ingroup ftz_vectors
   /// \brief Evaluates FTZ arithmetic before assigning to the existing raw-register destination.
+  template <detail::raw_register V, detail::ftz32_vector R> requires std::same_as<typename R::register_type,V>
   simd_inline V & operator/=(V & a,R b) noexcept {
     a=(R(a) / R(b)).to_native();
     return a;
@@ -792,10 +792,10 @@ export namespace ftz {
       raw_register<raw_family_t<X...>> &&
       (std::convertible_to<X &,ftz32_simd<raw_family_t<X...>,scalar_family_t<X...>>> && ...);
   }
-  template <class A,class B,class C> requires detail::ftz32_raw_scalar_fma<A,B,C>
   /// \ingroup ftz_vectors
-  /// \brief Evaluates fused a*b+c in one FTZ policy; array results retain the same element type
-  /// and extent.
+  /// \brief Imports raw SIMD operands into the FTZ scalar operand's policy and evaluates fused a*b+c.
+  /// Returns the raw register's matching FTZ vector rebind; operand conversions determine noexcept.
+  template <class A,class B,class C> requires detail::ftz32_raw_scalar_fma<A,B,C>
   simd_nodiscard simd_inline auto fma(A a,B b,C c)
       noexcept(std::is_nothrow_constructible_v<detail::ftz32_simd<detail::raw_family_t<A,B,C>,detail::scalar_family_t<A,B,C>>,A &> &&
         std::is_nothrow_constructible_v<detail::ftz32_simd<detail::raw_family_t<A,B,C>,detail::scalar_family_t<A,B,C>>,B &> &&
@@ -907,37 +907,37 @@ export namespace ftz {
       }
     }
   }
-  template <detail::ftz32_vector R>
   /// \ingroup ftz_vectors
   /// \brief Computes sine and cosine in radians with the scalar special-value rules; returns a
   /// pair in that order. Both members have type R.
+  template <detail::ftz32_vector R>
   simd_nodiscard simd_inline simd_pure auto sincos(R input) noexcept {
     auto [sine_values, cosine_values] = detail::ftz32_math::sincos(std::array{input});
     auto [sine] = sine_values;
     auto [cosine] = cosine_values;
     return std::pair{sine, cosine};
   }
-  template <detail::ftz32_vector R>
   /// \ingroup ftz_vectors
   /// \brief Computes sine in radians with dedicated output reconstruction and the scalar FTZ
   /// special-value rules. Returns R.
-  simd_nodiscard simd_inline simd_pure R sin(R input) noexcept { return detail::ftz32_math::sin(std::array{input})[0]; }
   template <detail::ftz32_vector R>
+  simd_nodiscard simd_inline simd_pure R sin(R input) noexcept { return detail::ftz32_math::sin(std::array{input})[0]; }
   /// \ingroup ftz_vectors
   /// \brief Computes cosine in radians with dedicated output reconstruction and the scalar FTZ
   /// special-value rules. Returns R.
-  simd_nodiscard simd_inline simd_pure R cos(R input) noexcept { return detail::ftz32_math::cos(std::array{input})[0]; }
   template <detail::ftz32_vector R>
+  simd_nodiscard simd_inline simd_pure R cos(R input) noexcept { return detail::ftz32_math::cos(std::array{input})[0]; }
   /// \ingroup ftz_vectors
   /// \brief Computes the exponential with the scalar FTZ underflow, overflow and special-value
   /// rules. Returns R.
+  template <detail::ftz32_vector R>
   simd_nodiscard simd_inline simd_pure R exp(R input) noexcept {
     auto [value] = detail::ftz32_math::exp(std::array{input});
     return value;
   }
-  template <detail::ftz32_vector R>
   /// \ingroup ftz_vectors
   /// \brief Computes exp(x)-1 with the scalar FTZ graph, preserving signed zero. Returns R.
+  template <detail::ftz32_vector R>
   simd_nodiscard simd_inline simd_pure R expm1(R input) noexcept {
     auto [value] = detail::ftz32_math::expm1(std::array{input});
     return value;
@@ -998,114 +998,114 @@ export namespace ftz {
       return result;
     }
   }
-  template<class R, std::size_t N> requires detail::ftz32_vector_value<R>
   /// \ingroup ftz_register_arrays
   /// \brief Adds matching register arrays; a non-array operand is converted once and broadcast,
   /// with conversion noexcept retained. Returns std::array<R,N>.
+  template<class R, std::size_t N> requires detail::ftz32_vector_value<R>
   simd_nodiscard simd_inline std::array<R,N> add(std::array<R,N> const & a, std::array<R,N> const & b) noexcept {
     return detail::ftz32_array_binary<'+'>(a,b);
   }
-  template<class R, std::size_t N, class B> requires detail::ftz32_vector_value<R> && std::convertible_to<B const &,R>
   /// \ingroup ftz_register_arrays
   /// \brief Adds matching register arrays; a non-array operand is converted once and broadcast,
   /// with conversion noexcept retained. Returns std::array<R,N>.
+  template<class R, std::size_t N, class B> requires detail::ftz32_vector_value<R> && std::convertible_to<B const &,R>
   simd_nodiscard simd_inline std::array<R,N> add(std::array<R,N> const & a, B const & b)
       noexcept(std::is_nothrow_constructible_v<R,B const &>) {
     return add(a, detail::array_broadcast<R,N>(R(b)));
   }
-  template<class R, std::size_t N, class A> requires detail::ftz32_vector_value<R> && std::convertible_to<A const &,R>
   /// \ingroup ftz_register_arrays
   /// \brief Adds matching register arrays; a non-array operand is converted once and broadcast,
   /// with conversion noexcept retained. Returns std::array<R,N>.
+  template<class R, std::size_t N, class A> requires detail::ftz32_vector_value<R> && std::convertible_to<A const &,R>
   simd_nodiscard simd_inline std::array<R,N> add(A const & a, std::array<R,N> const & b)
       noexcept(std::is_nothrow_constructible_v<R,A const &>) {
     return add(detail::array_broadcast<R,N>(R(a)), b);
   }
-  template<class R, std::size_t N> requires detail::ftz32_vector_value<R>
   /// \ingroup ftz_register_arrays
   /// \brief Subtracts matching register arrays; a non-array operand is converted once and
   /// broadcast, with conversion noexcept retained. Returns std::array<R,N>.
+  template<class R, std::size_t N> requires detail::ftz32_vector_value<R>
   simd_nodiscard simd_inline std::array<R,N> sub(std::array<R,N> const & a, std::array<R,N> const & b) noexcept {
     return detail::ftz32_array_binary<'-'>(a,b);
   }
-  template<class R, std::size_t N, class B> requires detail::ftz32_vector_value<R> && std::convertible_to<B const &,R>
   /// \ingroup ftz_register_arrays
   /// \brief Subtracts matching register arrays; a non-array operand is converted once and
   /// broadcast, with conversion noexcept retained. Returns std::array<R,N>.
+  template<class R, std::size_t N, class B> requires detail::ftz32_vector_value<R> && std::convertible_to<B const &,R>
   simd_nodiscard simd_inline std::array<R,N> sub(std::array<R,N> const & a, B const & b)
       noexcept(std::is_nothrow_constructible_v<R,B const &>) {
     return sub(a, detail::array_broadcast<R,N>(R(b)));
   }
-  template<class R, std::size_t N, class A> requires detail::ftz32_vector_value<R> && std::convertible_to<A const &,R>
   /// \ingroup ftz_register_arrays
   /// \brief Subtracts matching register arrays; a non-array operand is converted once and
   /// broadcast, with conversion noexcept retained. Returns std::array<R,N>.
+  template<class R, std::size_t N, class A> requires detail::ftz32_vector_value<R> && std::convertible_to<A const &,R>
   simd_nodiscard simd_inline std::array<R,N> sub(A const & a, std::array<R,N> const & b)
       noexcept(std::is_nothrow_constructible_v<R,A const &>) {
     return sub(detail::array_broadcast<R,N>(R(a)), b);
   }
-  template<class R, std::size_t N> requires detail::ftz32_vector_value<R>
   /// \ingroup ftz_register_arrays
   /// \brief Multiplies matching register arrays; a non-array operand is converted once and
   /// broadcast, with conversion noexcept retained. Returns std::array<R,N>.
+  template<class R, std::size_t N> requires detail::ftz32_vector_value<R>
   simd_nodiscard simd_inline std::array<R,N> mul(std::array<R,N> const & a, std::array<R,N> const & b) noexcept {
     return detail::ftz32_array_binary<'*'>(a,b);
   }
-  template<class R, std::size_t N, class B> requires detail::ftz32_vector_value<R> && std::convertible_to<B const &,R>
   /// \ingroup ftz_register_arrays
   /// \brief Multiplies matching register arrays; a non-array operand is converted once and
   /// broadcast, with conversion noexcept retained. Returns std::array<R,N>.
+  template<class R, std::size_t N, class B> requires detail::ftz32_vector_value<R> && std::convertible_to<B const &,R>
   simd_nodiscard simd_inline std::array<R,N> mul(std::array<R,N> const & a, B const & b)
       noexcept(std::is_nothrow_constructible_v<R,B const &>) {
     return mul(a, detail::array_broadcast<R,N>(R(b)));
   }
-  template<class R, std::size_t N, class A> requires detail::ftz32_vector_value<R> && std::convertible_to<A const &,R>
   /// \ingroup ftz_register_arrays
   /// \brief Multiplies matching register arrays; a non-array operand is converted once and
   /// broadcast, with conversion noexcept retained. Returns std::array<R,N>.
+  template<class R, std::size_t N, class A> requires detail::ftz32_vector_value<R> && std::convertible_to<A const &,R>
   simd_nodiscard simd_inline std::array<R,N> mul(A const & a, std::array<R,N> const & b)
       noexcept(std::is_nothrow_constructible_v<R,A const &>) {
     return mul(detail::array_broadcast<R,N>(R(a)), b);
   }
-  template<class R, std::size_t N> requires detail::ftz32_vector_value<R>
   /// \ingroup ftz_register_arrays
   /// \brief Evaluates fused a*b+c in one FTZ policy; array results retain the same element type
   /// and extent. Returns std::array<R,N>.
+  template<class R, std::size_t N> requires detail::ftz32_vector_value<R>
   simd_nodiscard simd_inline std::array<R,N> fma(std::array<R,N> const & a,
       std::array<R,N> const & b, std::array<R,N> const & c) noexcept {
     return detail::ftz32_array_fma(a,b,c);
   }
-  template<detail::ftz32_value R, std::size_t N>
   /// \ingroup ftz_register_arrays
   /// \brief Computes sine in radians with dedicated output reconstruction and the scalar FTZ
   /// special-value rules. Returns std::array<R,N>.
+  template<detail::ftz32_value R, std::size_t N>
   simd_nodiscard simd_inline auto sin(std::array<R,N> const & input) noexcept {
     return detail::ftz32_math::sin(input);
   }
-  template<detail::ftz32_value R, std::size_t N>
   /// \ingroup ftz_register_arrays
   /// \brief Computes cosine in radians with dedicated output reconstruction and the scalar FTZ
   /// special-value rules. Returns std::array<R,N>.
+  template<detail::ftz32_value R, std::size_t N>
   simd_nodiscard simd_inline auto cos(std::array<R,N> const & input) noexcept {
     return detail::ftz32_math::cos(input);
   }
-  template<detail::ftz32_value R, std::size_t N>
   /// \ingroup ftz_register_arrays
   /// \brief Computes the exponential with the scalar FTZ underflow, overflow and special-value
   /// rules. Returns std::array<R,N>.
+  template<detail::ftz32_value R, std::size_t N>
   simd_nodiscard simd_inline auto exp(std::array<R,N> const & input) noexcept {
     return detail::ftz32_math::exp(input);
   }
-  template<detail::ftz32_value R, std::size_t N>
   /// \ingroup ftz_register_arrays
   /// \brief Computes exp(x)-1 with the scalar FTZ graph, preserving signed zero. Returns std::array<R,N>.
+  template<detail::ftz32_value R, std::size_t N>
   simd_nodiscard simd_inline auto expm1(std::array<R,N> const & input) noexcept {
     return detail::ftz32_math::expm1(input);
   }
-  template<detail::ftz32_value R, std::size_t N>
   /// \ingroup ftz_register_arrays
   /// \brief Computes sine and cosine in radians with the scalar special-value rules; returns a
   /// pair in that order. Each member is std::array<R,N>.
+  template<detail::ftz32_value R, std::size_t N>
   simd_nodiscard simd_inline auto sincos(std::array<R,N> const & input) noexcept {
     return detail::ftz32_math::sincos(input);
   }
@@ -1116,10 +1116,10 @@ export namespace ftz {
 // SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
 
 export namespace ftz {
-  template<detail::ftz32_value R,std::size_t N>
   /// \ingroup ftz_register_arrays
   /// \brief Computes hyperbolic tangent with the scalar FTZ graph, preserving signed zero and
   /// saturating infinities. Returns std::array<R,N>.
+  template<detail::ftz32_value R,std::size_t N>
   simd_nodiscard simd_inline std::array<R,N> tanh(std::array<R,N> const & input) noexcept {
     if constexpr(N==0) return {};
     else {
@@ -1129,10 +1129,10 @@ export namespace ftz {
       return {{detail::ftz32_wrap<R>(result)...}};
     }
   }
-  template<detail::ftz32_vector R>
   /// \ingroup ftz_vectors
   /// \brief Computes hyperbolic tangent with the scalar FTZ graph, preserving signed zero and
   /// saturating infinities. Returns R.
+  template<detail::ftz32_vector R>
   simd_nodiscard simd_inline R tanh(R input) noexcept {
     auto [result]=::ftz::tanh(std::array{input});
     return result;
@@ -1140,10 +1140,10 @@ export namespace ftz {
 }
 
 export namespace ftz {
-  template<detail::ftz32_value R,std::size_t N>
   /// \ingroup ftz_register_arrays
   /// \brief Computes natural logarithms; either zero gives negative infinity, negative nonzero
   /// values give NaN. Returns std::array<R,N>.
+  template<detail::ftz32_value R,std::size_t N>
   simd_nodiscard simd_inline std::array<R,N> log(std::array<R,N> const & input) noexcept {
     if constexpr(N==0) return {};
     else {
@@ -1153,18 +1153,18 @@ export namespace ftz {
       return {{detail::ftz32_wrap<R>(result)...}};
     }
   }
-  template<detail::ftz32_vector R>
   /// \ingroup ftz_vectors
   /// \brief Computes natural logarithms; either zero gives negative infinity, negative nonzero
   /// values give NaN. Returns R.
+  template<detail::ftz32_vector R>
   simd_nodiscard simd_inline R log(R input) noexcept {
     auto [result]=::ftz::log(std::array{input});
     return result;
   }
-  template<detail::ftz32_value R,std::size_t N>
   /// \ingroup ftz_register_arrays
   /// \brief Computes log(1+x), preserving signed zero; -1 gives negative infinity and x < -1
   /// gives NaN. Returns std::array<R,N>.
+  template<detail::ftz32_value R,std::size_t N>
   simd_nodiscard simd_inline std::array<R,N> log1p(std::array<R,N> const & input) noexcept {
     if constexpr(N==0) return {};
     else {
@@ -1174,10 +1174,10 @@ export namespace ftz {
       return {{detail::ftz32_wrap<R>(result)...}};
     }
   }
-  template<detail::ftz32_vector R>
   /// \ingroup ftz_vectors
   /// \brief Computes log(1+x), preserving signed zero; -1 gives negative infinity and x < -1
   /// gives NaN. Returns R.
+  template<detail::ftz32_vector R>
   simd_nodiscard simd_inline R log1p(R input) noexcept {
     auto [result]=::ftz::log1p(std::array{input});
     return result;
@@ -1185,10 +1185,10 @@ export namespace ftz {
 }
 
 export namespace ftz {
-  template<detail::ftz32_value R,std::size_t N>
   /// \ingroup ftz_register_arrays
   /// \brief Computes atan2(y,x) in radians with the scalar FTZ signed-axis and infinity rules.
   /// Returns std::array<R,N>.
+  template<detail::ftz32_value R,std::size_t N>
   simd_nodiscard simd_inline std::array<R,N> atan2(
       std::array<R,N> const & y,std::array<R,N> const & x) noexcept {
     if constexpr(N==0) return {};
@@ -1200,9 +1200,9 @@ export namespace ftz {
       return {{detail::ftz32_wrap<R>(result)...}};
     }
   }
-  template<detail::ftz32_vector R>
   /// \ingroup ftz_vectors
   /// \brief Computes atan2(y,x) in radians with the scalar FTZ signed-axis and infinity rules. Returns R.
+  template<detail::ftz32_vector R>
   simd_nodiscard simd_inline R atan2(R y,R x) noexcept {
     auto [result]=::ftz::atan2(std::array{y},std::array{x});
     return result;
@@ -1210,38 +1210,38 @@ export namespace ftz {
 }
 
 export namespace ftz {
-  template<detail::ftz32_vector R>
   /// \ingroup ftz_vectors
   /// \brief Returns R::mask for NaN lanes by inspecting words; no FP evaluation or NaN quieting occurs.
+  template<detail::ftz32_vector R>
   simd_nodiscard simd_inline typename R::mask isnan(R value) noexcept {
     using U=typename R::bits_type;
     return (value.to_bits() & U(0x7fffffffu)) > U(0x7f800000u);
   }
-  template<detail::ftz32_vector R>
   /// \ingroup ftz_vectors
   /// \brief Returns R::mask for either infinity by inspecting lane words.
+  template<detail::ftz32_vector R>
   simd_nodiscard simd_inline typename R::mask isinf(R value) noexcept {
     using U=typename R::bits_type;
     return (value.to_bits() & U(0x7fffffffu)) == U(0x7f800000u);
   }
-  template<detail::ftz32_vector R>
   /// \ingroup ftz_vectors
   /// \brief Returns R::mask for finite lanes by inspecting words, without changing FP status.
+  template<detail::ftz32_vector R>
   simd_nodiscard simd_inline typename R::mask isfinite(R value) noexcept {
     using U=typename R::bits_type;
     return (value.to_bits() & U(0x7fffffffu)) < U(0x7f800000u);
   }
-  template<detail::ftz32_vector R>
   /// \ingroup ftz_vectors
   /// \brief Returns R::mask for set sign bits, including negative zero and signed NaNs.
+  template<detail::ftz32_vector R>
   simd_nodiscard simd_inline typename R::mask signbit(R value) noexcept {
     using U=typename R::bits_type;
     return (value.to_bits() & U(0x80000000u)) != U(0);
   }
-  template<detail::ftz32_vector R>
   /// \ingroup ftz_vectors
   /// \brief Returns magnitude with the sign bits of sign; all other words, including NaN
   /// payloads, are preserved. Returns R.
+  template<detail::ftz32_vector R>
   simd_nodiscard simd_inline R copysign(R magnitude,R sign) noexcept {
     using U=typename R::bits_type;
     using V=typename R::register_type;
@@ -1252,50 +1252,50 @@ export namespace ftz {
 
 export namespace ftz {
   // Integral-valued results cannot be subnormal; preserve the raw rounding result.
-  template<detail::ftz32_vector R>
   /// \ingroup ftz_vectors
   /// \brief Rounds toward negative infinity, independently of ambient rounding mode; signed
   /// zero and infinities survive. Returns R.
+  template<detail::ftz32_vector R>
   simd_nodiscard simd_inline R floor(R value) noexcept {
     using simd::floor;
     return R::unsafe_from_float32(floor(value.to_native()));
   }
-  template<detail::ftz32_value R,std::size_t N>
   /// \ingroup ftz_register_arrays
   /// \brief Rounds toward negative infinity, independently of ambient rounding mode; signed
   /// zero and infinities survive. Returns std::array<R,N>.
+  template<detail::ftz32_value R,std::size_t N>
   simd_nodiscard simd_inline std::array<R,N> floor(std::array<R,N> const & input) noexcept {
     auto const & [...value]=input;
     return {{floor(value)...}};
   }
-  template<detail::ftz32_vector R>
   /// \ingroup ftz_vectors
   /// \brief Rounds toward positive infinity, independently of ambient rounding mode; signed
   /// zero and infinities survive. Returns R.
+  template<detail::ftz32_vector R>
   simd_nodiscard simd_inline R ceil(R value) noexcept {
     using simd::ceil;
     return R::unsafe_from_float32(ceil(value.to_native()));
   }
-  template<detail::ftz32_value R,std::size_t N>
   /// \ingroup ftz_register_arrays
   /// \brief Rounds toward positive infinity, independently of ambient rounding mode; signed
   /// zero and infinities survive. Returns std::array<R,N>.
+  template<detail::ftz32_value R,std::size_t N>
   simd_nodiscard simd_inline std::array<R,N> ceil(std::array<R,N> const & input) noexcept {
     auto const & [...value]=input;
     return {{ceil(value)...}};
   }
-  template<detail::ftz32_vector R>
   /// \ingroup ftz_vectors
   /// \brief Rounds toward zero, independently of ambient rounding mode; signed zero and
   /// infinities survive. Returns R.
+  template<detail::ftz32_vector R>
   simd_nodiscard simd_inline R trunc(R value) noexcept {
     using simd::trunc;
     return R::unsafe_from_float32(trunc(value.to_native()));
   }
-  template<detail::ftz32_value R,std::size_t N>
   /// \ingroup ftz_register_arrays
   /// \brief Rounds toward zero, independently of ambient rounding mode; signed zero and
   /// infinities survive. Returns std::array<R,N>.
+  template<detail::ftz32_value R,std::size_t N>
   simd_nodiscard simd_inline std::array<R,N> trunc(std::array<R,N> const & input) noexcept {
     auto const & [...value]=input;
     return {{trunc(value)...}};
