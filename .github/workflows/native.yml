@@ -1,0 +1,156 @@
+# SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
+# SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
+name: Native packages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux LLVM 23 / AVX2
+            runner: ubuntu-24.04
+            profile: AVX2
+          - name: macOS LLVM 23 / NEON
+            runner: macos-15
+            profile: NEON
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Check out the qualified SIMD dependency
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: ekmett/simd
+          ref: 3bd4d98a7f0c7ce71bd9d8213231bbec2cd897d7
+          path: build/deps/simd
+          persist-credentials: false
+      # Use the setup actions from the same pinned, qualified SIMD revision.
+      - uses: ./build/deps/simd/.github/actions/setup/ubuntu/compiler
+        if: runner.os == 'Linux'
+      - uses: ./build/deps/simd/.github/actions/setup/ubuntu/build-tools
+        if: runner.os == 'Linux'
+      - uses: ./build/deps/simd/.github/actions/setup/macos/compiler
+        if: runner.os == 'macOS'
+      - uses: ./build/deps/simd/.github/actions/setup/macos/build-tools
+        if: runner.os == 'macOS'
+      - name: Record toolchain and admit the test architecture
+        run: |
+          mkdir -p build/logs
+          {
+            git rev-parse HEAD
+            git -C build/deps/simd rev-parse HEAD
+            uname -a
+            clang++ --version
+            clang-scan-deps --version
+            cmake --version
+            ninja --version
+          } | tee build/logs/environment.log
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            for feature in avx2 fma bmi2; do
+              grep -qw "$feature" /proc/cpuinfo || {
+                echo "::error::This test profile requires $feature on the runner."
+                exit 1
+              }
+            done
+          else
+            [[ "$(uname -m)" == arm64 ]] || {
+              echo "::error::The NEON job requires an Apple silicon runner."
+              exit 1
+            }
+          fi
+          echo 'Exceptions, PCH and IPO are enabled in both packages. All configured tests run; no filter is applied.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Linux covers AVX2; macOS covers NEON. AVX-512 and the two-x86-profile fixture are outside this workflow. This is CPU package qualification, not a GPU run.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Build and install SIMD
+        run: |
+          extra=()
+          if [[ "$RUNNER_OS" == Linux ]]; then extra+=(-DCMAKE_LINKER_TYPE=LLD); fi
+          cmake -S build/deps/simd -B build/simd -G Ninja \
+            -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DSIMD_BUILD_TESTS=OFF -DSIMD_BUILD_DOCS=OFF \
+            -DSIMD_ENABLE_EXCEPTIONS=ON -DSIMD_ENABLE_PCH=ON -DSIMD_ENABLE_IPO=ON \
+            -DSIMD_PROFILES="${{ matrix.profile }}" "${extra[@]}" \
+            2>&1 | tee build/logs/simd-configure.log
+          cmake --build build/simd --parallel 2 2>&1 | tee build/logs/simd-build.log
+          cmake --install build/simd --prefix "$GITHUB_WORKSPACE/build/install/simd" \
+            2>&1 | tee build/logs/simd-install.log
+      - name: Build and test FTZ
+        run: |
+          extra=()
+          if [[ "$RUNNER_OS" == Linux ]]; then extra+=(-DCMAKE_LINKER_TYPE=LLD); fi
+          cmake -S . -B build/ftz -G Ninja \
+            -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -Dsimd_DIR="$GITHUB_WORKSPACE/build/install/simd/lib/cmake/simd" \
+            -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
+            -DFTZ_BUILD_TESTS=ON -DFTZ_BUILD_DOCS=OFF \
+            -DFTZ_ENABLE_EXCEPTIONS=ON -DFTZ_ENABLE_PCH=ON -DFTZ_ENABLE_IPO=ON \
+            -DFTZ_TEST_ISA="${{ matrix.profile }}" -DFTZ_TEST_PROFILES="${{ matrix.profile }}" \
+            "${extra[@]}" 2>&1 | tee build/logs/ftz-configure.log
+          cmake --build build/ftz --parallel 2 2>&1 | tee build/logs/ftz-build.log
+          ctest --test-dir build/ftz --show-only=json-v1 > build/logs/ftz-tests.json
+          ctest --test-dir build/ftz --no-tests=error --output-on-failure \
+            --output-junit "$GITHUB_WORKSPACE/build/logs/ftz-tests.xml" \
+            2>&1 | tee build/logs/ftz-test.log
+      - name: Relocate both installed packages
+        run: |
+          cmake --install build/ftz --prefix "$GITHUB_WORKSPACE/build/install/ftz" \
+            2>&1 | tee build/logs/ftz-install.log
+          mkdir -p 'build/relocated packages'
+          cmake -E rename build/install/simd 'build/relocated packages/simd'
+          cmake -E rename build/install/ftz 'build/relocated packages/ftz'
+      - name: Test installed module consumers
+        run: |
+          extra=()
+          if [[ "$RUNNER_OS" == Linux ]]; then extra+=(-DCMAKE_LINKER_TYPE=LLD); fi
+          for suite in package api; do
+            options=()
+            if [[ "$suite" == package ]]; then
+              options+=(-DTEST_ISA="${{ matrix.profile }}" -DTEST_PCH=ON -DTEST_IPO=ON)
+            else
+              options+=(-DAPI_PROFILES="${{ matrix.profile }}")
+            fi
+            cmake -S "tests/$suite" -B "build/$suite" -G Ninja \
+              -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+              -Dsimd_DIR="$GITHUB_WORKSPACE/build/relocated packages/simd/lib/cmake/simd" \
+              -Dftz_DIR="$GITHUB_WORKSPACE/build/relocated packages/ftz/lib/cmake/ftz" \
+              -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
+              "${extra[@]}" "${options[@]}" 2>&1 | tee "build/logs/$suite-configure.log"
+            cmake --build "build/$suite" --parallel 2 2>&1 | tee "build/logs/$suite-build.log"
+            ctest --test-dir "build/$suite" --no-tests=error --output-on-failure \
+              --output-junit "$GITHUB_WORKSPACE/build/logs/$suite-tests.xml" \
+              2>&1 | tee "build/logs/$suite-test.log"
+          done
+      - name: Retain package diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-logs-${{ matrix.profile }}
+          if-no-files-found: warn
+          path: |
+            build/logs/
+            build/*/CMakeCache.txt
+            build/*/compile_commands.json
+            build/*/CMakeFiles/CMakeConfigureLog.yaml
+            build/*/Testing/Temporary/
