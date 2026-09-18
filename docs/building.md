@@ -78,3 +78,23 @@ on pull requests and publishes them to [GitHub Pages](https://ekmett.github.io/f
 after a push to main. It pins Doxygen and the SIMD dependency, treats documentation
 warnings as errors, and checks generated links before uploading the site.
 Generated HTML stays in the build and deployment artifacts, outside the source tree.
+
+## Hosted native package checks
+
+The [Native packages workflow](https://github.com/ekmett/ftz/blob/main/.github/workflows/native.yml)
+runs the same package, numerical and relocated module-consumer checks on four
+standard GitHub-hosted runner labels:
+
+| Runner | Native profile |
+| --- | --- |
+| `ubuntu-24.04` | x86-64 AVX2 |
+| `ubuntu-24.04-arm` | ARM64 NEON |
+| `macos-15-intel` | x86-64 AVX2 |
+| `macos-15` | ARM64 NEON |
+
+Each lane records the actual CPU, OS, compiler and dependency revision in its
+own diagnostics artifact and rejects an incompatible architecture before the
+build. Both packages retain exceptions, PCH and IPO; the installed packages move
+to a path containing spaces before consumer builds. A passing hosted run qualifies
+that runner and revision, not every CPU sharing its architecture. AVX-512, native
+Windows and GPU execution are outside this workflow.

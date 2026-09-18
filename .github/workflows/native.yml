@@ -24,12 +24,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Linux LLVM 23 / AVX2
+          - name: Linux x64 LLVM 23 / AVX2
             runner: ubuntu-24.04
             profile: AVX2
-          - name: macOS LLVM 23 / NEON
+          - name: Linux ARM64 LLVM 23 / NEON
+            runner: ubuntu-24.04-arm
+            profile: NEON
+          - name: macOS ARM64 LLVM 23 / NEON
             runner: macos-15
             profile: NEON
+          - name: macOS x64 LLVM 23 / AVX2
+            runner: macos-15-intel
+            profile: AVX2
     defaults:
       run:
         shell: bash
@@ -60,26 +66,51 @@ jobs:
             git rev-parse HEAD
             git -C build/deps/simd rev-parse HEAD
             uname -a
+            if [[ "$RUNNER_OS" == Linux ]]; then
+              cat /etc/os-release
+              lscpu
+              cat /proc/cpuinfo
+            else
+              sw_vers
+              sysctl -a | grep -E '^(machdep.cpu|hw.machine|hw.model|hw.ncpu|hw.optional)' || true
+            fi
             clang++ --version
             clang-scan-deps --version
             cmake --version
             ninja --version
           } | tee build/logs/environment.log
-          if [[ "$RUNNER_OS" == Linux ]]; then
+          arch=$(uname -m)
+          if [[ "${{ matrix.profile }}" == AVX2 ]]; then
+            [[ "$arch" == x86_64 ]] || {
+              echo "::error::The AVX2 profile requires an x86_64 runner."
+              exit 1
+            }
+            if [[ "$RUNNER_OS" == Linux ]]; then
+              features=$(grep -m1 '^flags' /proc/cpuinfo)
+            else
+              features=$(sysctl -n machdep.cpu.features machdep.cpu.leaf7_features)
+            fi
+            features=$(printf '%s' "$features" | tr '[:upper:]' '[:lower:]')
             for feature in avx2 fma bmi2; do
-              grep -qw "$feature" /proc/cpuinfo || {
+              grep -qw "$feature" <<< "$features" || {
                 echo "::error::This test profile requires $feature on the runner."
                 exit 1
               }
             done
           else
-            [[ "$(uname -m)" == arm64 ]] || {
-              echo "::error::The NEON job requires an Apple silicon runner."
+            [[ "$arch" == arm64 || "$arch" == aarch64 ]] || {
+              echo "::error::The NEON profile requires an ARM64 runner."
               exit 1
             }
+            if [[ "$RUNNER_OS" == Linux ]]; then
+              grep -qw asimd /proc/cpuinfo || {
+                echo "::error::The NEON profile requires Advanced SIMD on the runner."
+                exit 1
+              }
+            fi
           fi
           echo 'Exceptions, PCH and IPO are enabled in both packages. All configured tests run; no filter is applied.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'Linux covers AVX2; macOS covers NEON. AVX-512 and the two-x86-profile fixture are outside this workflow. This is CPU package qualification, not a GPU run.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Linux and macOS each cover native AVX2 and NEON. AVX-512 and the two-x86-profile fixture are outside this workflow. This is CPU package qualification, not a GPU run.' >> "$GITHUB_STEP_SUMMARY"
       - name: Build and install SIMD
         run: |
           extra=()
@@ -146,7 +177,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: native-logs-${{ matrix.profile }}
+          name: native-logs-${{ matrix.runner }}-${{ matrix.profile }}
           if-no-files-found: warn
           path: |
             build/logs/
