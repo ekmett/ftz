@@ -163,3 +163,11 @@ Intel macOS is deferred until a qualified LLVM 23 toolchain artifact is availabl
 The hosted image supplies older Clang versions, Homebrew has no Intel LLVM 23
 bottle, and the inspected official LLVM 23 releases provide macOS ARM64 archives
 only. A full LLVM source bootstrap is not part of each package test run.
+
+## Optional MPFR accuracy tests
+
+`FTZ_BUILD_MPFR_TESTS` defaults to `OFF`. Set it to `ON` with host/tests enabled
+to measure `log` and `log1p` against installed MPFR/GMP. A missing dependency
+produces a configuration error; nothing is fetched, installed globally, or
+added to package exports. See the
+[oracle method and sampling scope](https://github.com/ekmett/ftz/blob/main/tests/log/README.md#optional-mathematical-accuracy-oracle).

@@ -185,6 +185,9 @@ jobs:
           cmake --build build/simd --parallel 2 2>&1 | tee build/logs/simd-build.log
           cmake --install build/simd --prefix "$GITHUB_WORKSPACE/build/install/simd" \
             2>&1 | tee build/logs/simd-install.log
+      - name: Install optional accuracy oracle (Linux x64 only)
+        if: matrix.runner == 'ubuntu-24.04'
+        run: sudo apt-get update && sudo apt-get install -y libmpfr-dev
       - name: Build and test FTZ
         run: |
           compiler=clang++
@@ -203,6 +206,7 @@ jobs:
             -Dsimd_DIR="$GITHUB_WORKSPACE/build/install/simd/lib/cmake/simd" \
             -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
             -DFTZ_BUILD_TESTS=ON -DFTZ_BUILD_DOCS=OFF \
+            -DFTZ_BUILD_MPFR_TESTS=${{ matrix.runner == 'ubuntu-24.04' }} \
             -DFTZ_ENABLE_EXCEPTIONS=ON -DFTZ_ENABLE_PCH=ON -DFTZ_ENABLE_IPO=ON \
             -DFTZ_TEST_ISA="${{ matrix.profile }}" -DFTZ_TEST_PROFILES="${{ matrix.profile }}" \
             "${extra[@]}" 2>&1 | tee build/logs/ftz-configure.log
@@ -264,6 +268,7 @@ jobs:
           if-no-files-found: warn
           path: |
             build/logs/
+            build/ftz/tests/log/mpfr-*.txt
             build/sccache-pch-probe/
             build/*/CMakeCache.txt
             build/*/compile_commands.json
