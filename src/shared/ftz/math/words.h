@@ -10,7 +10,7 @@
 #error "FTZ_SHADER_INT64 must be 0 or 1"
 #endif
 #if !defined(__cplusplus) && !FTZ_SHADER_INT64
-#include "ftz/webgpu/words.h"
+#include "ftz/webgpu_words.h"
 #else
 #ifdef __cplusplus
 #include <bit>
