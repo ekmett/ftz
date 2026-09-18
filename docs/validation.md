@@ -254,3 +254,12 @@ It rebuilds the PCH directly and tests the PCH-consuming module cache key;
 cached PCH producer invalidation is unchanged and is not qualified by this
 fixture. The five fixture requests are isolated from the producer job's
 aggregate cache statistics; per-stage fixture statistics remain in artifacts.
+
+## Independent log accuracy oracle
+
+The optional MPFR fixture measures mathematical accuracy separately from
+operation-graph equality. It leaves every coefficient, recurrence and rounding
+point unchanged. Reports include exact worst-case words, absolute error near
+zero, sampled monotonicity, cutover neighbors and special/domain checks, with
+256/512-bit precision agreement. The initial implementation awaits its first
+MPFR-enabled hosted measurement; no measured envelope is claimed here yet.

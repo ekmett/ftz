@@ -52,3 +52,49 @@ Pass an optional output path to capture the scalar and common native widths
 1/2/3/4 as little-endian binary32 words. Larger widths still run their checks
 but are omitted from the packet so AVX2, AVX512 and NEON packets are comparable.
 `tests/compare_fp32.py` requires exact non-NaN bits, including signed zero.
+
+## Optional mathematical accuracy oracle
+
+`-DFTZ_BUILD_MPFR_TESTS=ON` adds `log.mpfr.<profile>` to CTest. It is disabled
+by default, requires installed MPFR and GMP headers/libraries, and never
+downloads them. For a nonstandard prefix use `CMAKE_PREFIX_PATH`, or the four
+`FTZ_MPFR_INCLUDE_DIR`, `FTZ_GMP_INCLUDE_DIR`, `FTZ_MPFR_LIBRARY` and
+`FTZ_GMP_LIBRARY` cache entries. The root build also requires host/tests enabled.
+These are private test dependencies: installation and exported targets do not
+refer to MPFR or GMP. The standalone log fixture accepts the same option.
+
+The oracle measures the existing scalar operation graph; it does not replace
+it with a libm call or require correct rounding. Existing native packet checks
+remain the separate evidence that packed implementations follow that graph.
+Both policies are measured: `m32` under gradual and flush controls, and `h32`
+under admitted flush controls. MPFR work runs separately under gradual controls.
+
+Each raw binary32 input is first flushed to signed zero when subnormal, matching
+the public factory. MPFR evaluates mathematical `log(x)` or `log1p(x)` with
+nearest-even rounding at 256 and 512 bits. Both references are independently
+rounded to binary32 nearest-even and then output-flushed to signed zero; a
+disagreement fails the test. This precision cross-check is evidence for this
+sample, not an exhaustive hard-to-round proof. NaN payload/sign are ignored;
+infinities, domain errors and specified signed zeros are checked explicitly.
+
+The bank includes 16,384 xorshift32 words from seed `0xfa728311`, 8,193 neighbors
+of each of +1 and -1, all normal power-of-two boundaries, all normal mantissa
+reduction boundaries at 1.5 times a power of two, and small neighborhoods of
+special words, the minimum normal, the tiny log1p threshold, and direct-kernel
+cutovers. Duplicate raw words are removed. The report gives the actual count.
+
+`mpfr-<profile>.txt` in the fixture build directory records maximum observed
+ULP distance with raw/normalized input and actual/reference output words.
+ULP distance counts adjacent binary32 representations after reference output
+flushing; it is not a uniform real-number error scale across zero or the FTZ
+gap. For mathematical results with magnitude at most 2^-12, a separate maximum
+absolute error compares the graph output with the unflushed 512-bit result.
+Sorted sampled inputs report monotonicity decreases (and the first eight exact
+pairs), and immediate neighbors of the named cutovers are printed separately.
+Accuracy and monotonicity observations are not forced to zero: known errors
+are compatible with this library's reproducible fast-graph contract.
+
+Linux x64 native CI enables this optional test using `libmpfr-dev` on the
+ephemeral runner and retains its report. Other native lanes leave the option
+disabled. The measured envelope and retained worst-case inputs must be read
+with their compiler/profile/sample scope, never as exhaustive bounds.
