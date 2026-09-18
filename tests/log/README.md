@@ -98,3 +98,11 @@ Linux x64 native CI enables this optional test using `libmpfr-dev` on the
 ephemeral runner and retains its report. Other native lanes leave the option
 disabled. The measured envelope and retained worst-case inputs must be read
 with their compiler/profile/sample scope, never as exhaustive bounds.
+
+The four measured worst inputs from the first Linux run are explicitly retained
+even if the sampling bank later changes. Their MPFR reference words, integer
+ULP-distance ceilings and absolute-error ceilings are checked under every
+policy/mode. Improvements pass; larger errors at those cases fail. These
+per-case regression budgets are not asserted as bounds on all inputs. See the
+[measured envelope](https://github.com/ekmett/ftz/blob/main/docs/validation.md#independent-log-accuracy-oracle)
+for exact words, toolchain, hardware and scope.

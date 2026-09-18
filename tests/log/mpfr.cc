@@ -17,6 +17,19 @@ namespace {
   constexpr unsigned samples = 16384;
   constexpr std::array cutovers{0x00800000u, 0x33000000u, 0xb3000000u,
     0xbf000000u, 0x3f800000u, 0xbf800000u, 0x3fc00000u};
+  struct retained_case {
+    unsigned operation;
+    word input, reference;
+    std::uint64_t maximum_ulp;
+    double maximum_absolute;
+  };
+  // Observed worst ULP and near-zero absolute cases from run 35304442816.
+  // Budgets allow improvements, not larger errors; they do not freeze graph bits.
+  constexpr std::array retained{
+    retained_case{0, 0x17b97dc0u, 0xc25c52bdu, 1, 1.920095136342877e-06},
+    retained_case{1, 0xbf7fffeeu, 0xc15bec2du, 1, 4.8097603195369421e-07},
+    retained_case{0, 0x3f7ff1f2u, 0xb960e62cu, 0, 7.2744520291151217e-12},
+    retained_case{1, 0xb977e239u, 0xb977e9bau, 0, 7.2734128687377858e-12}};
   std::FILE *report = stdout;
 
   word normalize(word x) {
@@ -68,6 +81,7 @@ namespace {
       state ^= state << 13; state ^= state >> 17; state ^= state << 5;
       result.push_back(state);
     }
+    for (auto const &item : retained) result.push_back(item.input);
     std::sort(result.begin(), result.end(), [](word a, word b) { return ordered(a) < ordered(b); });
     result.erase(std::unique(result.begin(), result.end()), result.end());
     return result;
@@ -107,7 +121,7 @@ namespace {
     bool okay = true;
     for (unsigned op = 0; op < 2; ++op) {
       observation worst, near_zero;
-      std::size_t monotonic = 0, specials = 0, finite_count = 0;
+      std::size_t monotonic = 0, specials = 0, finite_count = 0, retained_count = 0;
       bool previous_valid = false;
       word previous_input = 0, previous_output = 0;
       std::fprintf(report, "\npolicy=%s operation=%s\n", policy, op == 0 ? "log" : "log1p");
@@ -154,6 +168,16 @@ namespace {
         mpfr_sub(error.value, actual_value.value, high.value, MPFR_RNDN);
         mpfr_abs(error.value, error.value, MPFR_RNDN);
         observation current{raw, x, y, reference, distance(y, reference), mpfr_get_d(error.value, MPFR_RNDU)};
+        for (auto const &item : retained) {
+          if (item.operation != op || item.input != raw) continue;
+          ++retained_count;
+          print_case("retained", current);
+          if (reference != item.reference || current.ulp > item.maximum_ulp ||
+              current.absolute > item.maximum_absolute) {
+            std::fprintf(report, "retained accuracy regression raw=%08x\n", raw);
+            okay = false;
+          }
+        }
         if (current.ulp > worst.ulp || finite_count == 1) worst = current;
         // |mathematical result| <= 2^-12; absolute error is against unflushed MPFR.
         if (mpfr_cmpabs(high.value, cutoff.value) <= 0 && current.absolute >= near_zero.absolute)
@@ -164,8 +188,9 @@ namespace {
       }
       print_case("maximum_ulp", worst);
       print_case("near_zero_maximum_absolute", near_zero);
-      std::fprintf(report, "finite=%zu special_domain=%zu monotonicity_violations=%zu\n",
-        finite_count, specials, monotonic);
+      std::fprintf(report, "finite=%zu special_domain=%zu monotonicity_violations=%zu retained_cases=%zu\n",
+        finite_count, specials, monotonic, retained_count);
+      if (retained_count != 2) okay = false;
     }
     return okay;
   }

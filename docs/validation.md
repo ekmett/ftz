@@ -261,5 +261,41 @@ The optional MPFR fixture measures mathematical accuracy separately from
 operation-graph equality. It leaves every coefficient, recurrence and rounding
 point unchanged. Reports include exact worst-case words, absolute error near
 zero, sampled monotonicity, cutover neighbors and special/domain checks, with
-256/512-bit precision agreement. The initial implementation awaits its first
-MPFR-enabled hosted measurement; no measured envelope is claimed here yet.
+256/512-bit precision agreement.
+
+[Run 35304442816](https://github.com/ekmett/ftz/actions/runs/35304442816), source
+`7326ea6`, measured 36,935 distinct raw inputs with MPFR 4.2.1, Ubuntu Clang
+23.1.2, CMake 4.4.3 and AVX2 on an Intel Xeon Platinum 8370C. The producer used
+PCH, IPO and exceptions; the oracle translation unit used the existing
+non-IPO numerical-fixture convention. All 24 native CTests, the relocated
+package test and three API tests passed. The MPFR test took 1.75 seconds in
+this run; this is not a repeated performance benchmark.
+
+Each function ran under manual gradual, manual flush and hardware flush
+controls: 221,610 input/function/policy observations in total. All three
+configurations reported the same maxima below, zero sampled monotonicity
+decreases, and no precision, domain, signed-zero or output-normalization
+failures. This does not establish exhaustive accuracy or monotonicity.
+
+| Function / measure | Input word | Graph output | Rounded FTZ reference | Observed error |
+| --- | --- | --- | --- | --- |
+| log / maximum ULP distance | `17b97dc0` | `c25c52bc` | `c25c52bd` | 1 binary32 step |
+| log1p / maximum ULP distance | `bf7fffee` | `c15bec2e` | `c15bec2d` | 1 binary32 step |
+| log / near-zero absolute | `3f7ff1f2` | `b960e62c` | `b960e62c` | 7.2744520291151217e-12 |
+| log1p / near-zero absolute | `b977e239` | `b977e9ba` | `b977e9ba` | 7.2734128687377858e-12 |
+
+Near-zero means mathematical output magnitude at most 2^-12; absolute errors
+refer to the unflushed 512-bit result. ULP distance is an integer count from
+the rounded output reference, not real error divided by one local ULP. In
+particular, zero ULP distance can still have nonzero absolute error. Maximum
+ties retain the first input in deterministic numeric-word order.
+
+These four inputs and their MPFR reference words are retained explicitly in
+the oracle bank. Per-case ULP-distance and absolute-error ceilings match the
+observed values (absolute ceilings use the upward-rounded binary64 report).
+The regression checks allow improved accuracy rather than freezing the old
+graph's output words. Remaining bank values, cutover neighbors and sampled
+monotonicity continue to be reported without requiring perfect accuracy.
+The full report is retained as `ftz/tests/log/mpfr-avx2.txt` in the run's
+`native-logs-ubuntu-24.04-AVX2` artifact. No MPFR-backed ARM, AVX-512, Windows
+or GPU accuracy qualification is claimed by this measurement.
