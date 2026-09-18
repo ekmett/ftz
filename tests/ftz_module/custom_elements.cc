@@ -6,8 +6,7 @@
 #include <utility>
 import ftz;
 import simd.scalar;
-import simd.avx2;
-import simd.avx512;
+import simd;
 
 namespace fixture {
   // A separate test-only value domain. It has no implicit float conversion and

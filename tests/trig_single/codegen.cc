@@ -5,14 +5,12 @@
 #include <cstdint>
 #include <utility>
 #include <ftz/math.h>
+import simd;
 #if FTZ_TEST_PROFILE == 512
-import simd.avx512;
 using Arch=simd::avx512;
 #elif FTZ_TEST_PROFILE == 128
-import simd.neon;
 using Arch=simd::neon;
 #else
-import simd.avx2;
 using Arch=simd::avx2;
 #endif
 using V=simd::vec<float,4,Arch>;

@@ -5,11 +5,15 @@
 import ftz.controls;
 import ftz;
 import simd.wide;
-import simd.avx2;
-import simd.avx512;
+import simd;
 
 using A = simd::vec<ftz::ftz32,8,simd::avx2>;
 using B = simd::vec<ftz::ftz32,16,simd::avx512>;
+// Redundant compiler-implied features must not create another FTZ vector type.
+using canonical_avx2 = simd::isa<simd::avx2::features | simd::feature::avx>;
+using canonical_avx512 = simd::isa<simd::avx512::features | simd::feature::avx512f>;
+static_assert(std::same_as<A,simd::vec<ftz::ftz32,8,canonical_avx2>>);
+static_assert(std::same_as<B,simd::vec<ftz::ftz32,16,canonical_avx512>>);
 static_assert(std::same_as<typename A::value_type,ftz::ftz32>);
 static_assert(std::same_as<typename B::value_type,ftz::ftz32>);
 static_assert(!std::same_as<simd::vec<ftz::ftz32,4,simd::avx2>,simd::vec<ftz::ftz32,4,simd::avx512>>);

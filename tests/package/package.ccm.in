@@ -5,7 +5,7 @@ module;
 #include <cstdint>
 export module package;
 export import ftz;
-import simd.@profile@;
+import simd;
 export namespace package {
   using vector = simd::vec<ftz::ftz32,4,simd::@profile@>;
   simd_inline void fused(float const * input, float * output) {
