@@ -2,8 +2,21 @@
 // SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
 #include <cstdio>
 #include <thread>
-#if defined(__AVX__) || defined(__AVX2__) || defined(__AVX512F__)
-#error The controls-only consumer must retain the baseline ISA
+// Older SIMD packages have no configured modern minimum and must stay pre-AVX.
+#ifndef SIMD_MINIMAL_HAS_AVX2
+#if defined(__AVX__)
+#error Unexpected AVX in a consumer of a legacy baseline SIMD package
+#endif
+#define SIMD_MINIMAL_HAS_AVX2 0
+#endif
+#ifndef SIMD_MINIMAL_HAS_AVX512
+#define SIMD_MINIMAL_HAS_AVX512 0
+#endif
+#if defined(__AVX2__) != SIMD_MINIMAL_HAS_AVX2
+#error Consumer AVX2 capability differs from the configured SIMD minimum
+#endif
+#if (defined(__AVX512F__) || defined(__AVX512DQ__) || defined(__AVX512BW__) || defined(__AVX512VL__)) != SIMD_MINIMAL_HAS_AVX512
+#error Consumer AVX512 capability differs from the configured SIMD minimum
 #endif
 import ftz.controls;
 

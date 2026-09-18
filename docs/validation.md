@@ -299,3 +299,45 @@ monotonicity continue to be reported without requiring perfect accuracy.
 The full report is retained as `ftz/tests/log/mpfr-avx2.txt` in the run's
 `native-logs-ubuntu-24.04-AVX2` artifact. No MPFR-backed ARM, AVX-512, Windows
 or GPU accuracy qualification is claimed by this measurement.
+
+
+## Configured SIMD minimum and common BMI reuse
+
+The configurable-minimum migration was checked locally against installed SIMD
+`230ae465a8c5495d0eabb44d1f30e3b4d4b793b2`, using Windows x64 Clang-cl 23.1.1,
+CMake 4.4.3 and AVX2 plus AVX512. The dependency used the default AVX2/FMA/BMI2
+minimum and exceptions; FTZ enabled exceptions, PCH and IPO. All 38 native tests
+passed, followed by a relocated AVX512 third-library package consumer with
+PCH/IPO (1/1) and scalar/environment/AVX2/AVX512 API consumers (4/4).
+
+The controls and dispatcher guards accept the advertised minimum and reject
+unadvertised profile flags. Six compiler controls accepted a legacy baseline,
+AVX2 minimum and stronger AVX512 minimum, and rejected legacy AVX leakage,
+unadvertised AVX512 and compilation weaker than the advertised minimum. This
+is compiler-option validation, not execution on an unsupported CPU.
+
+Private clang-cl warning and object-format flags now stay on implementation
+compiles, including PCH, instead of splitting imported module compile tuples.
+Warning enforcement and floating-point/exception/runtime options are retained.
+The generated native build graph has one provider for each of the eight common
+SIMD modules, reduced from three groups differing only in diagnostics. The
+producer and tests consistently disable language extensions. Fixture headers
+precede imports; affected Windows packet file opens use `fopen_s` so warnings
+remain enabled with the shared imported declarations.
+
+Native CI now pins SIMD `e8bcda617d9dd67f37fccd1692dbe0727a179da6`, whose change
+from the locally tested SIMD revision is confined to invalidating cached
+minimum-feature configure probes when their input options change. The runtime
+code and package partition are unchanged. Hosted validation of this exact pair
+is recorded by the migration PR; the older numerical receipts above keep their
+original dependency pins and scope.
+
+
+The final granular-dependency follow-up removes FTZ's unused omnibus link:
+production imports only `simd.scalar`. The installed FTZ export was checked to
+contain `simd::minimal;simd::headers` only, and the generated native and relocated
+package graphs have no SIMD omnibus BMI producer. The mixed-profile dispatcher
+explicitly links its selected profile archives rather than relying on an
+omnibus through FTZ. Requalification again passed 38/38 native tests, the
+relocated PCH/IPO package test (1/1), all API consumers (4/4), and the six guard
+compiler controls, using the same local toolchain and SIMD runtime checkpoint.

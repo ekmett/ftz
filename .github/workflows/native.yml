@@ -52,7 +52,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           repository: ekmett/simd
-          ref: 3bd4d98a7f0c7ce71bd9d8213231bbec2cd897d7
+          ref: e8bcda617d9dd67f37fccd1692dbe0727a179da6
           path: build/deps/simd
           persist-credentials: false
       # Use the setup actions from the same pinned, qualified SIMD revision.

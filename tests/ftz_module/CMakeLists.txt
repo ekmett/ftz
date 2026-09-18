@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
 # SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
-# Controls and admission decisions are baseline consumers: no ISA provider.
+# Controls and admission use the configured SIMD minimum, without an extra ISA provider.
 foreach(suite IN ITEMS controls admission)
   set(target ftz_test_${suite})
   add_executable(${target} ${suite}.cc)

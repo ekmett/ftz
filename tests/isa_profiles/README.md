@@ -8,6 +8,11 @@ NaNs are normalized only in numerical columns; every integer bit stays exact.
 
 Each backend consumer now imports the same `ftz` module and its chosen `simd`
 ISA module. The former header/import duplicate is replaced by one actual import
-consumer per ISA. The baseline x86 entry performs CPUID/OS-state admission
-before invoking those objects; it has no ISA flags or IPO. FP qualification is
+consumer per ISA. The x86 entry uses the configured SIMD minimum and performs
+CPUID/OS-state admission before invoking profile objects. Its compile guards
+compare actual AVX2/AVX512 capabilities with the minimum advertised by the
+package; it selects no additional profile and uses no IPO. A caller or runner
+must already support the configured project minimum: this executable is not
+a portable pre-AVX launcher when its package minimum is AVX2 or stronger.
+Older packages retain the pre-AVX guard. FP qualification is
 common and runs once per fixture invocation. No production dispatch is added.

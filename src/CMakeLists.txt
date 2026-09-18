@@ -16,7 +16,6 @@ target_link_libraries(ftz PUBLIC simd::common simd::headers)
 if(FTZ_ENABLE_PCH)
   target_precompile_headers(ftz PRIVATE <array> <bit> <cmath> <concepts> <cstdint> <type_traits> <utility> <simd/attributes.h>)
 endif()
-target_link_libraries(ftz PUBLIC simd::simd)
 file(GLOB_RECURSE ftz_cxx_headers CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cxx/ftz/*.h")
 target_sources(ftz PUBLIC
   FILE_SET cxx_headers TYPE HEADERS BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/cxx" FILES ${ftz_cxx_headers}
