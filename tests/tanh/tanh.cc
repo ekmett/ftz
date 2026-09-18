@@ -81,7 +81,13 @@ namespace {
 }
 int main(int argc,char ** argv) {
   if(argc>2)return 1;
-  if(argc==2){packet=std::fopen(argv[1],"wb");if(!packet)return 2;}
+  if(argc==2){
+#if defined(_MSC_VER)
+    if(::fopen_s(&packet,argv[1],"wb")!=0)return 2;
+#else
+    packet=std::fopen(argv[1],"wb");if(!packet)return 2;
+#endif
+  }
   auto words=bank();
   {ftz::native_fp32_scope scope(ftz::native_fp32_mode::gradual);run<ftz::m32>(words);}
   {ftz::native_fp32_scope scope(ftz::native_fp32_mode::flush);run<ftz::m32>(words);run<ftz::h32>(words);}

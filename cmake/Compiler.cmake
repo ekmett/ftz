@@ -19,7 +19,12 @@ function(ftz_host_settings target)
       message(FATAL_ERROR "The Windows host configuration requires clang-cl.")
     endif()
     target_compile_options(${target} PUBLIC /fp:strict)
-    target_compile_options(${target} PRIVATE /W4 /clang:-Wno-unqualified-std-cast-call)
+    target_compile_options(${target} PRIVATE /W4)
+    # CMake 4.4 does not recognize /clang:-W... as diagnostic-only when
+    # grouping imported BMIs. Retain the warning policy on this target's
+    # sources/PCH without creating another dependency BMI compile tuple.
+    set_property(TARGET ${target} APPEND_STRING PROPERTY COMPILE_FLAGS
+      " /clang:-Wno-unqualified-std-cast-call")
     if(FTZ_ENABLE_ASAN)
       target_compile_options(${target} PUBLIC /fsanitize=address)
       target_link_options(${target} PUBLIC /INCREMENTAL:NO)

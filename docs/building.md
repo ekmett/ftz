@@ -36,9 +36,13 @@ simd_target_profile(example AVX2)
 ```
 
 `ftz::ftz` supplies the `ftz` and `ftz.controls` modules and static archive. Its
-baseline controls do not inherit a numerical ISA. The application selects the
-provider for each numerical translation unit and checks CPU/OS support before
-entering it. For a separate consuming project, include both package prefixes in
+controls inherit the configured SIMD package minimum, but do not select an
+additional numerical profile. New SIMD packages default to AVX2/FMA/BMI2 on
+x86 and the platform NEON baseline on ARM64; the dependency build can configure
+a different minimum through `SIMD_MINIMAL_COMPILE_OPTIONS`. Applications and
+runners must admit that project minimum before entering package code. The
+application selects any additional provider for each numerical translation
+unit and checks CPU/OS support before entering it. For a separate consuming project, include both package prefixes in
 `CMAKE_PREFIX_PATH`.
 
 `FTZ_FP32_HARDWARE_FTZ` is a package build setting selecting the compatibility

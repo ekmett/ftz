@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
 // SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
 #include "contract.h"
-import ftz;
 #include <array>
 #include <cstdio>
 #include <cstring>
@@ -11,11 +10,35 @@ import ftz;
 #include <cpuid.h>
 #endif
 
-#if defined(__AVX__) || defined(__AVX2__) || defined(__AVX512F__)
-#error "The dispatcher must compile for the baseline ISA."
+import ftz;
+
+// Older SIMD packages have no configured modern minimum and must stay pre-AVX.
+#ifndef SIMD_MINIMAL_HAS_AVX2
+#if defined(__AVX__)
+#error Unexpected AVX in a consumer of a legacy baseline SIMD package
+#endif
+#define SIMD_MINIMAL_HAS_AVX2 0
+#endif
+#ifndef SIMD_MINIMAL_HAS_AVX512
+#define SIMD_MINIMAL_HAS_AVX512 0
+#endif
+#if defined(__AVX2__) != SIMD_MINIMAL_HAS_AVX2
+#error Consumer AVX2 capability differs from the configured SIMD minimum
+#endif
+#if (defined(__AVX512F__) || defined(__AVX512DQ__) || defined(__AVX512BW__) || defined(__AVX512VL__)) != SIMD_MINIMAL_HAS_AVX512
+#error Consumer AVX512 capability differs from the configured SIMD minimum
 #endif
 
 namespace {
+  std::FILE * open_file(char const * name, char const * mode) {
+#if defined(_MSC_VER)
+    std::FILE * file = nullptr;
+    if (::fopen_s(&file, name, mode) != 0) return nullptr;
+    return file;
+#else
+    return std::fopen(name, mode);
+#endif
+  }
   void cpuid(unsigned leaf, unsigned subleaf, unsigned (&r)[4]) {
 #if defined(_MSC_VER)
     int native[4]; __cpuidex(native, int(leaf), int(subleaf));
@@ -93,7 +116,7 @@ int main(int argc, char ** argv) {
   }
   if (before != ftz::read_native_fp_state()) return 10;
   if (argc > 2) {
-    auto * file = std::fopen(argv[2], "wb");
+    auto * file = open_file(argv[2], "wb");
     if (!file) return 11;
     auto const & result = request & admitted & 1u ? avx2 : avx512;
     bool written = std::fwrite(result.data(), sizeof(result[0]), result.size(), file) == result.size();
@@ -101,7 +124,7 @@ int main(int argc, char ** argv) {
     if (!written || !closed) return 12;
   }
   if (argc > 3) {
-    auto * file = std::fopen(argv[3], "rb");
+    auto * file = open_file(argv[3], "rb");
     if (!file) return 13;
     capture expected{};
     bool read = std::fread(expected.data(), sizeof(expected[0]), expected.size(), file) == expected.size();

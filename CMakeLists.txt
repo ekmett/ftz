@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
 cmake_minimum_required(VERSION 4.4)
 project(ftz VERSION 0.0.1 LANGUAGES NONE)
+# Keep test and producer module consumers on the same standard-language tuple.
+set(CMAKE_CXX_EXTENSIONS OFF)
 option(FTZ_BUILD_HOST "Build the C++26 module and archive" ON)
 option(FTZ_BUILD_DOCS "Build API documentation (requires Doxygen)" OFF)
 option(FTZ_BUILD_TESTS "Build numerical and module regression tests" ${PROJECT_IS_TOP_LEVEL})
