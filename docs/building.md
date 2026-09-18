@@ -82,19 +82,28 @@ Generated HTML stays in the build and deployment artifacts, outside the source t
 ## Hosted native package checks
 
 The [Native packages workflow](https://github.com/ekmett/ftz/blob/main/.github/workflows/native.yml)
-runs the same package, numerical and relocated module-consumer checks on four
+runs the same package, numerical and relocated module-consumer checks on five
 standard GitHub-hosted runner labels:
 
 | Runner | Native profile |
 | --- | --- |
 | `ubuntu-24.04` | x86-64 AVX2 |
 | `ubuntu-24.04-arm` | ARM64 NEON |
-| `macos-15-intel` | x86-64 AVX2 |
 | `macos-15` | ARM64 NEON |
+| `windows-2025` | x86-64 AVX2 |
+| `windows-11-arm` | ARM64 NEON |
 
 Each lane records the actual CPU, OS, compiler and dependency revision in its
 own diagnostics artifact and rejects an incompatible architecture before the
 build. Both packages retain exceptions, PCH and IPO; the installed packages move
 to a path containing spaces before consumer builds. A passing hosted run qualifies
-that runner and revision, not every CPU sharing its architecture. AVX-512, native
-Windows and GPU execution are outside this workflow.
+that runner and revision, not every CPU sharing its architecture. AVX-512 and GPU execution are outside this workflow.
+
+Windows uses native, checksum-pinned LLVM 23.1.1, CMake 4.4.3 and Ninja 1.13.2
+with the matching Visual Studio SDK environment. The setup action is copied from
+SIMD `8f69034`; the separately pinned numerical dependency is unchanged.
+
+Intel macOS is deferred until a qualified LLVM 23 toolchain artifact is available.
+The hosted image supplies older Clang versions, Homebrew has no Intel LLVM 23
+bottle, and the inspected official LLVM 23 releases provide macOS ARM64 archives
+only. A full LLVM source bootstrap is not part of each package test run.
