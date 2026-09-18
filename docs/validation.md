@@ -6,6 +6,11 @@ consumer see the same types and definitions? The records below answer those
 questions within their measured scope. Packet equality is evidence for the
 recorded inputs; exact-rational bounds establish only their stated theorems.
 
+These are checkpoint records. Earlier entries retain the SIMD provider layout
+and dependency pins used for those checks. The current
+[build guide](building.md) describes the single-hub dependency and the required
+coordinated rebuild of interfaces containing SIMD values.
+
 The combined math checkpoint was exercised with Clang 23.1.1, CMake 4.4.3 and
 Ninja on Windows x86-64 and Apple M3. Both policies are present in one library:
 manual arithmetic runs under gradual and flush controls; hardware arithmetic
@@ -325,19 +330,20 @@ producer and tests consistently disable language extensions. Fixture headers
 precede imports; affected Windows packet file opens use `fopen_s` so warnings
 remain enabled with the shared imported declarations.
 
-Native CI now pins SIMD `e8bcda617d9dd67f37fccd1692dbe0727a179da6`, whose change
-from the locally tested SIMD revision is confined to invalidating cached
+Native CI at this checkpoint pinned SIMD
+`e8bcda617d9dd67f37fccd1692dbe0727a179da6`, whose change from the locally tested
+SIMD revision is confined to invalidating cached
 minimum-feature configure probes when their input options change. The runtime
 code and package partition are unchanged. Hosted validation of this exact pair
 is recorded by the migration PR; the older numerical receipts above keep their
 original dependency pins and scope.
 
 
-The final granular-dependency follow-up removes FTZ's unused omnibus link:
+The final granular-dependency follow-up removed FTZ's unused omnibus link:
 production imports only `simd.scalar`. The installed FTZ export was checked to
 contain `simd::minimal;simd::headers` only, and the generated native and relocated
-package graphs have no SIMD omnibus BMI producer. The mixed-profile dispatcher
-explicitly links its selected profile archives rather than relying on an
+package graphs had no SIMD omnibus BMI producer. The mixed-profile dispatcher
+explicitly linked its selected profile archives rather than relying on an
 omnibus through FTZ. Requalification again passed 38/38 native tests, the
 relocated PCH/IPO package test (1/1), all API consumers (4/4), and the six guard
 compiler controls, using the same local toolchain and SIMD runtime checkpoint.
