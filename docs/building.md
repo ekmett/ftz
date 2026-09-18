@@ -75,6 +75,11 @@ Unknown syntax, whitespace inside values, malformed/compound quotes, escapes,
 nested/other response files or size limits preserve the original compiler
 arguments and bypass caching directly. An `E2BIG` retry also executes the
 original compiler directly. This is not a general response-file parser.
+Only POSIX compiler names `clang` and `clang++`, optionally followed by a
+numeric version suffix, enter this cache path. Other names, including
+`c++` and target-prefixed Clang aliases, execute the original compiler
+arguments directly without caching so they cannot bypass PCH input hashing.
+
 Explicit `-include-pch` binary inputs, including CMake's `-Xclang` spelling,
 are appended to `SCCACHE_EXTRAFILES`; existing entries are preserved. The
 pinned sccache version does not otherwise hash these PCH binaries, which can
