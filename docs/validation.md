@@ -171,3 +171,54 @@ storage, short swizzles and both policy types. The native math pass above is
 ordinary execution; its additional functions do not inherit those earlier
 sanitizer results. No iPhone or browser execution is
 established by these Windows and M3 checks.
+
+## Compiler cache
+
+FTZ `4ba71e2` plus the cache integration was checked on macOS 15.5 ARM64
+using Clang 23.1.1, CMake 4.4.3, Ninja 1.12.1 and sccache 0.16.0. The SIMD
+dependency remained at the workflow's qualified `3bd4d98` revision. Both
+packages used Release, NEON, exceptions, PCH and IPO; builds used two compiler
+jobs. SIMD was built and installed once with the normalized launcher before
+comparing the FTZ producers. Each comparison used a separate fresh build tree,
+local disk cache and server; its warm pass cleaned outputs, retained the cache
+and reset statistics.
+
+| FTZ launcher | Build | Hits / requests | Misses | Bypasses | Build wall time |
+| --- | --- | --- | --- | --- | --- |
+| Plain sccache | Cold | 0 / 28 | 1 | 27 | 23.15 s |
+| Plain sccache | Clean warm | 1 / 28 | 0 | 27 | 23.23 s |
+| Module-map expansion | Cold | 0 / 28 | 28 | 0 | 24.48 s |
+| Module-map expansion | Clean warm | 28 / 28 | 0 | 0 | 4.10 s |
+
+The plain launcher cached only the PCH; all 27 remaining requests bypassed
+with reason `@`. Expansion admitted 25 C++ compilations, two named module
+producers and the PCH. All four producer passes reported zero cache errors and
+passed all 22 CTests. The initial SIMD dependency build admitted its eight
+module producers and one PCH with no bypasses or cache errors.
+
+Both installed packages were then moved into paths containing spaces. With no
+sccache on `PATH` and an empty compiler launcher, the transitive installed
+consumer passed 1/1 test and the API consumers passed 3/3. Installed CMake
+metadata contains no compiler-launcher dependency. The seven copied launcher
+test methods also pass; the five-platform workflow matrix, numerical sources,
+SIMD pin and package settings are unchanged.
+
+The wall times are single local observations of `cmake --build`, excluding
+configuration, cleaning, CTest and dependency installation. They are not a
+repeated benchmark or a hosted CI speedup claim; the cold normalized build
+was slower. Statistics exclude dependency scanning, linking and generated BMI
+commands that do not use the launcher. GitHub cache-service reuse and native
+Windows/Linux execution remain unverified by this run. The Windows workflow
+retains plain sccache and its existing unsupported-request bypasses.
+
+Workflow YAML, Bash syntax and whitespace checks pass. New documentation links
+use absolute GitHub destinations so they do not escape the generated site;
+the three link-checker unit tests pass. Doxygen 1.18 was unavailable locally,
+so this check does not establish a generated-documentation build.
+
+The Windows setup action also incorporates SIMD `127533c`'s correction for an
+observed hosted CI prerequisite: preserve the SDK environment's `PATH` order
+when exporting it through `GITHUB_PATH`, and qualify Git Bash after tool setup.
+The previous ordering selected the WindowsApps WSL stub instead of Git Bash.
+Native Windows confirmation of this correction remains pending; it does not
+change the compiler, SDK versions or arithmetic settings.

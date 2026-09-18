@@ -47,6 +47,57 @@ preprocessor macros, and a consumer `#define` does not reselect its compiled
 alias. It does not disable either `m32` or `h32`, or configure thread controls.
 New code can name its policy directly.
 
+## Compiler caching
+
+Native CI uses sccache 0.16.0 for the SIMD dependency and FTZ producer builds,
+with Mozilla's commit-pinned
+[action](https://github.com/Mozilla-Actions/sccache-action/tree/fc920bf0ec8de6ee65d409111f7ec508035751ba)
+and the GitHub Actions cache backend. The action checks the release archive's
+published checksum and supplies cache service credentials; repository permissions
+remain `contents: read` and no additional secrets are needed. Advanced and JSON
+statistics are retained with package diagnostics, including failed builds when
+cache setup succeeded. They cover both producers; the relocated package/API
+consumers deliberately configure without a cache launcher.
+
+On Linux and macOS, a conservative
+[launcher](https://github.com/ekmett/ftz/blob/main/.github/scripts/sccache_launcher.py) expands recognized CMake
+`.modmap` response arguments before sccache. CMake quotes module paths, which
+otherwise trigger the pinned cache's `@` bypass. The launcher accepts only
+`-x c++-module`, quoted module output paths and named module input paths with
+simple nonempty ASCII values. It expands argv without changing CMake's files.
+Unknown syntax, whitespace inside values, malformed/compound quotes, escapes,
+nested/other response files or size limits preserve the original invocation.
+An `E2BIG` retry also restores the original response arguments. This is not a
+general response-file parser; paths with spaces inside module maps retain the
+original bypass. Windows keeps direct sccache because clang-cl's PCH and
+forwarded module flags remain unsupported by the pinned release.
+
+The launcher and its seven semantic test methods are copied unchanged from
+[SIMD `0331d2a`](https://github.com/ekmett/simd/tree/0331d2ac68eec00feb74447005a29b34ac97a83e/.github/scripts).
+Keep the implementations aligned when updating them. POSIX CI runs the tests
+with `python3 -B .github/scripts/test_sccache_launcher.py`.
+
+For local producer builds, install sccache separately and put it on `PATH`.
+Add `-DCMAKE_CXX_COMPILER_LAUNCHER=sccache` for its normal local disk cache, or
+use the same POSIX module-map launcher from the FTZ checkout:
+
+```sh
+-DCMAKE_CXX_COMPILER_LAUNCHER="$(command -v python3);$PWD/.github/scripts/sccache_launcher.py"
+```
+
+Use that argument on each producer's configure command. It is confined to the
+build tree and is not exported into installed packages. Keep PCH, modules, IPO
+and exception settings unchanged. Omit the argument for a fresh uncached tree,
+or set `-DCMAKE_CXX_COMPILER_LAUNCHER=` to clear it in an existing tree.
+
+To measure reuse, build and run CTest, record cache statistics, clean the build
+outputs, run `sccache --zero-stats`, then rebuild and test with the same paths
+and compiler. A no-op incremental build does not exercise caching. Dependency
+scanning, linking and some CMake-generated BMI commands remain outside the
+launcher. [Validation](https://github.com/ekmett/ftz/blob/main/docs/validation.md#compiler-cache) records the actual cache
+coverage and timing limits; successful builds alone do not establish hosted
+cache reuse or a speedup.
+
 ## API reference
 
 I generate the host and shader references from the public interfaces and use

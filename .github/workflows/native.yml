@@ -20,6 +20,8 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
+    env:
+      SCCACHE_GHA_ENABLED: "true"
     strategy:
       fail-fast: false
       matrix:
@@ -65,6 +67,14 @@ jobs:
       # Windows setup copied from SIMD 8f69034; numerical dependency remains pinned above.
       - uses: ./.github/actions/setup/windows
         if: runner.os == 'Windows'
+      - name: Set up compiler cache
+        id: sccache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.16.0
+      - name: Check compiler cache launcher
+        if: runner.os != 'Windows'
+        run: python3 -B .github/scripts/test_sccache_launcher.py
       - name: Record Windows hardware and admit the test architecture
         if: runner.os == 'Windows'
         shell: pwsh
@@ -154,11 +164,17 @@ jobs:
       - name: Build and install SIMD
         run: |
           compiler=clang++
+          launcher=sccache
           extra=()
-          if [[ "$RUNNER_OS" == Windows ]]; then compiler=clang-cl; fi
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            compiler=clang-cl
+          else
+            launcher="$(command -v python3);$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
+          fi
           if [[ "$RUNNER_OS" != macOS ]]; then extra+=(-DCMAKE_LINKER_TYPE=LLD); fi
           cmake -S build/deps/simd -B build/simd -G Ninja \
             -DCMAKE_CXX_COMPILER="$compiler" -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER_LAUNCHER="$launcher" \
             -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DSIMD_BUILD_TESTS=OFF -DSIMD_BUILD_DOCS=OFF \
             -DSIMD_ENABLE_EXCEPTIONS=ON -DSIMD_ENABLE_PCH=ON -DSIMD_ENABLE_IPO=ON \
@@ -170,11 +186,17 @@ jobs:
       - name: Build and test FTZ
         run: |
           compiler=clang++
+          launcher=sccache
           extra=()
-          if [[ "$RUNNER_OS" == Windows ]]; then compiler=clang-cl; fi
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            compiler=clang-cl
+          else
+            launcher="$(command -v python3);$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
+          fi
           if [[ "$RUNNER_OS" != macOS ]]; then extra+=(-DCMAKE_LINKER_TYPE=LLD); fi
           cmake -S . -B build/ftz -G Ninja \
             -DCMAKE_CXX_COMPILER="$compiler" -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER_LAUNCHER="$launcher" \
             -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -Dsimd_DIR="$GITHUB_WORKSPACE/build/install/simd/lib/cmake/simd" \
             -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
@@ -219,6 +241,19 @@ jobs:
               --output-junit "$GITHUB_WORKSPACE/build/logs/$suite-tests.xml" \
               2>&1 | tee "build/logs/$suite-test.log"
           done
+      - name: Record compiler cache statistics
+        if: always() && steps.sccache.outcome == 'success'
+        run: |
+          mkdir -p build/logs
+          sccache --version | tee build/logs/sccache-version.txt
+          sccache --show-adv-stats | tee build/logs/sccache-stats.txt
+          sccache --show-stats --stats-format=json > build/logs/sccache-stats.json
+          {
+            echo '### Producer compiler cache (SIMD and FTZ)'
+            echo '```text'
+            cat build/logs/sccache-version.txt build/logs/sccache-stats.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Retain package diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
