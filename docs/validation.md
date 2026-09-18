@@ -331,3 +331,13 @@ minimum-feature configure probes when their input options change. The runtime
 code and package partition are unchanged. Hosted validation of this exact pair
 is recorded by the migration PR; the older numerical receipts above keep their
 original dependency pins and scope.
+
+
+The final granular-dependency follow-up removes FTZ's unused omnibus link:
+production imports only `simd.scalar`. The installed FTZ export was checked to
+contain `simd::minimal;simd::headers` only, and the generated native and relocated
+package graphs have no SIMD omnibus BMI producer. The mixed-profile dispatcher
+explicitly links its selected profile archives rather than relying on an
+omnibus through FTZ. Requalification again passed 38/38 native tests, the
+relocated PCH/IPO package test (1/1), all API consumers (4/4), and the six guard
+compiler controls, using the same local toolchain and SIMD runtime checkpoint.

@@ -35,7 +35,9 @@ target_link_libraries(example PRIVATE ftz::ftz simd::avx2)
 simd_target_profile(example AVX2)
 ```
 
-`ftz::ftz` supplies the `ftz` and `ftz.controls` modules and static archive. Its
+`ftz::ftz` supplies the `ftz` and `ftz.controls` modules and static archive. It
+depends on SIMD's common/minimal modules and headers, not the omnibus or every
+profile archive. Numerical consumers link their selected SIMD provider. Its
 controls inherit the configured SIMD package minimum, but do not select an
 additional numerical profile. New SIMD packages default to AVX2/FMA/BMI2 on
 x86 and the platform NEON baseline on ARM64; the dependency build can configure
