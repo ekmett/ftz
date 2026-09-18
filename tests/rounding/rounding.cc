@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 #include "../core_regression/support/imports.h"
-using arch=FTZ_TEST_ARCH;
+constexpr auto arch=FTZ_TEST_ARCH;
 enum class direction { down,up,zero };
 std::size_t comparisons=0;
 void check(bool value) { if(!value)std::abort(); }

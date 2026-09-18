@@ -9,8 +9,8 @@
 import ftz;
 import simd;
 #if REVIEW_AVX512
-using arch=simd::avx512;
+constexpr auto arch=simd::avx512;
 #else
-using arch=simd::avx2;
+constexpr auto arch=simd::avx2;
 #endif
 import simd.wide;

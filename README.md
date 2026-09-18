@@ -5,7 +5,7 @@ happens, when subnormals become signed zero, and which operations are fused.
 FTZ gives that contract a type, in C++26 and HLSL 2021.
 
 I keep arithmetic policy separate from register layout. [SIMD](https://github.com/ekmett/simd)
-owns vectors, masks, architecture tags and wide register packs. FTZ supplies the
+owns vectors, masks, ISA values and wide register packs. FTZ supplies the
 element type and its operations. Changing the number of registers does not
 change the arithmetic policy.
 

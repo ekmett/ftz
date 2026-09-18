@@ -20,7 +20,7 @@ can generate their own compatible BMIs. They do not form a separate header-only
 public API. The shader headers are the public `ftz::hlsl` interface; applications
 own their entry points and choose the compiled policy with defines.
 
-`simd` owns native registers, masks, architecture tags and generic `wide`
+`simd` owns native registers, masks, ISA values and generic `wide`
 forwarding. FTZ supplies an element customization once for each arithmetic
 policy; that customization composes with the supported native architectures.
 I keep that dependency one way. Array math kernels expose independent register

@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <type_traits>
 #include "../core_regression/support/imports.h"
-using arch=FTZ_TEST_ARCH;
+constexpr auto arch=FTZ_TEST_ARCH;
 void check(bool value){if(!value)std::abort();}
 constexpr std::array words{0u,0x80000000u,1u,0x80000001u,0x00800000u,0x80800000u,0x3f800000u,0xbf800000u,
   0x7f800000u,0xff800000u,0x7fc12345u,0xffc12345u,0x7f800001u,0xff800001u};

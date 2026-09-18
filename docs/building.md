@@ -37,7 +37,7 @@ simd_target_profile(example AVX2)
 
 `ftz::ftz` supplies the `ftz` and `ftz.controls` modules and static archive. It
 depends on SIMD's common/minimal modules and headers. Numerical consumers link
-`simd::simd` and import `simd`; architecture tags select vector families within
+`simd::simd` and import `simd`; ISA values select vector families within
 that hub. The compatibility targets `simd::avx2`, `simd::avx512` and `simd::neon`
 refer to the same hub, not separate profile archives.
 
@@ -51,9 +51,10 @@ build can configure it through `SIMD_MINIMAL_COMPILE_OPTIONS`. Applications must
 admit that minimum too. Include both installed package prefixes in
 `CMAKE_PREFIX_PATH`.
 
-The hub's canonical architecture tags change C++ type identities from the older
-profile modules. Rebuild FTZ and every consumer together, including libraries
-whose interfaces contain SIMD values; do not mix old and new objects or BMIs.
+Structural ISA values replace type tags in SIMD template arguments, changing
+vector type identities from the earlier API. Rebuild FTZ and every consumer
+together, including libraries whose interfaces contain SIMD values; do not mix
+old and new objects or BMIs.
 
 `FTZ_FP32_HARDWARE_FTZ` is a package build setting selecting the compatibility
 alias `ftz::ftz32`, and defaults to zero. Importing a module does not export
