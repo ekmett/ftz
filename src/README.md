@@ -3,7 +3,7 @@
 I keep numerical policy in FTZ and register machinery in SIMD. Applications
 import `ftz` for the numerical types and math. The separate
 `ftz.controls` module supplies floating-point environment management without
-requiring a numerical type or an ISA-specific SIMD module.
+requiring a numerical type or the native SIMD hub.
 
 | Path | Responsibility |
 | --- | --- |
