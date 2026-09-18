@@ -222,3 +222,29 @@ when exporting it through `GITHUB_PATH`, and qualify Git Bash after tool setup.
 The previous ordering selected the WindowsApps WSL stub instead of Git Bash.
 Native Windows confirmation of this correction remains pending; it does not
 change the compiler, SDK versions or arithmetic settings.
+
+
+### PCH-dependent module invalidation
+
+The earlier unchanged-input cache checks did not establish PCH binary
+invalidation. SIMD CI run `35300325585`, job `105461412565`, subsequently
+restored a module recording a 19,198,904-byte PCH alongside a newly generated
+19,198,912-byte PCH; Clang correctly rejected the combination. The earlier
+two-file module fixture did not exercise this PCH dependency.
+
+sccache 0.16.0 hashes explicit module inputs, but treats `-include-pch` only
+as a preprocessing argument. The launcher now appends explicit PCH binary
+inputs to `SCCACHE_EXTRAFILES`, retaining existing entries. Unknown response
+or PCH syntax runs the original compiler directly. No compiler validation is
+disabled; modules, PCH and IPO remain enabled.
+
+The hosted `test_sccache_pch.py` fixture checks cold and warm module builds,
+a rebuilt PCH whose bytes change while preprocessing stays equivalent,
+unchanged reuse afterward, and identical PCH bytes with a changed timestamp.
+Each stage compiles a fresh uncached importer so Clang validates the restored
+module against the actual PCH. It retains cache entries and statistics and
+asserts per-stage counter deltas, with ThinLTO enabled. This is a required
+regression check, not a claim that the new hosted runs have already passed.
+It rebuilds the PCH directly and tests the PCH-consuming module cache key;
+cached PCH producer invalidation is unchanged and is not qualified by this
+fixture. The five fixture requests also appear in the job's total statistics.

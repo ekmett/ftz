@@ -74,7 +74,9 @@ jobs:
           version: v0.16.0
       - name: Check compiler cache launcher
         if: runner.os != 'Windows'
-        run: python3 -B .github/scripts/test_sccache_launcher.py
+        run: |
+          python3 -B .github/scripts/test_sccache_launcher.py
+          python3 -B .github/scripts/test_sccache_pch.py "$(command -v clang++)" "$GITHUB_WORKSPACE/build/sccache-pch-probe"
       - name: Record Windows hardware and admit the test architecture
         if: runner.os == 'Windows'
         shell: pwsh
@@ -262,6 +264,7 @@ jobs:
           if-no-files-found: warn
           path: |
             build/logs/
+            build/sccache-pch-probe/
             build/*/CMakeCache.txt
             build/*/compile_commands.json
             build/*/CMakeFiles/CMakeConfigureLog.yaml
