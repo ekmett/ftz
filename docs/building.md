@@ -31,21 +31,29 @@ consumer uses packages built with both `SIMD_ENABLE_EXCEPTIONS=ON` and
 ```cmake
 find_package(ftz CONFIG REQUIRED COMPONENTS ftz)
 add_executable(example example.cc)
-target_link_libraries(example PRIVATE ftz::ftz simd::avx2)
+target_link_libraries(example PRIVATE ftz::ftz simd::simd)
 simd_target_profile(example AVX2)
 ```
 
 `ftz::ftz` supplies the `ftz` and `ftz.controls` modules and static archive. It
-depends on SIMD's common/minimal modules and headers, not the omnibus or every
-profile archive. Numerical consumers link their selected SIMD provider. Its
-controls inherit the configured SIMD package minimum, but do not select an
-additional numerical profile. New SIMD packages default to AVX2/FMA/BMI2 on
-x86 and the platform NEON baseline on ARM64; the dependency build can configure
-a different minimum through `SIMD_MINIMAL_COMPILE_OPTIONS`. Applications and
-runners must admit that project minimum before entering package code. The
-application selects any additional provider for each numerical translation
-unit and checks CPU/OS support before entering it. For a separate consuming project, include both package prefixes in
+depends on SIMD's common/minimal modules and headers. Numerical consumers link
+`simd::simd` and import `simd`; architecture tags select vector families within
+that hub. The compatibility targets `simd::avx2`, `simd::avx512` and `simd::neon`
+refer to the same hub, not separate profile archives.
+
+FTZ's numerical helpers still use the consuming translation unit's native ISA
+settings. Keep `simd_target_profile` on those consumers and admit the selected
+ISA before entry. Importing the hub does not perform admission or configure the
+thread's FP controls. Controls-only consumers inherit the configured SIMD
+package minimum without an additional numerical profile. That minimum defaults
+to AVX2/FMA/BMI2 on x86 and the platform NEON baseline on ARM64; the dependency
+build can configure it through `SIMD_MINIMAL_COMPILE_OPTIONS`. Applications must
+admit that minimum too. Include both installed package prefixes in
 `CMAKE_PREFIX_PATH`.
+
+The hub's canonical architecture tags change C++ type identities from the older
+profile modules. Rebuild FTZ and every consumer together, including libraries
+whose interfaces contain SIMD values; do not mix old and new objects or BMIs.
 
 `FTZ_FP32_HARDWARE_FTZ` is a package build setting selecting the compatibility
 alias `ftz::ftz32`, and defaults to zero. Importing a module does not export

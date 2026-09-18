@@ -9,14 +9,12 @@
 #include <type_traits>
 #include <utility>
 import ftz;
+import simd;
 #if FTZ_TEST_PROFILE == 512
-import simd.avx512;
 #define FTZ_TEST_ARCH simd::avx512
 #elif FTZ_TEST_PROFILE == 256
-import simd.avx2;
 #define FTZ_TEST_ARCH simd::avx2
 #elif FTZ_TEST_PROFILE == 128
-import simd.neon;
 #define FTZ_TEST_ARCH simd::neon
 #else
 #error Select a test SIMD profile

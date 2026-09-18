@@ -145,7 +145,7 @@ namespace ftz::detail {
 }
 
 /** \defgroup ftz_vectors FTZ SIMD values
- * Import `ftz` and the selected SIMD architecture module, then use
+ * Import `ftz` and `simd`, then use
  * `simd::vec<ftz::m32,N,Arch>` or `simd::vec<ftz::h32,N,Arch>`.
  * The element policy applies to every lane; hardware values require an admitted
  * flush environment on the calling thread. The raw register's layout, lane

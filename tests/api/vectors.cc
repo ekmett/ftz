@@ -5,14 +5,12 @@
 #include <type_traits>
 #include <utility>
 import ftz;
+import simd;
 #if API_PROFILE == 512
-import simd.avx512;
 using arch = simd::avx512;
 #elif API_PROFILE == 128
-import simd.neon;
 using arch = simd::neon;
 #else
-import simd.avx2;
 using arch = simd::avx2;
 #endif
 import simd.wide;

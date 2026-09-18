@@ -29,7 +29,7 @@ arithmetic contract, processes 96 values and restores the caller's FP state.
 
 ```cpp
 import ftz;
-import simd.avx2;
+import simd;
 
 bool example() {
   ftz::native_fp32_scope region(ftz::native_fp32_mode::gradual);
