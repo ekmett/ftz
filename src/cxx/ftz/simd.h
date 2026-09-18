@@ -828,6 +828,24 @@ export namespace ftz {
   }
 
   namespace detail::ftz32_math {
+    // The exceptional pair shares extraction and full-range reduction. Keep
+    // bounded registers untouched and standalone sin/cos on their own graphs.
+    template <bool Hardware, class V>
+    simd_nodiscard simd_inline simd_pure std::pair<V, V> repair_sincos(
+        V sine, V cosine, detail::ftz32_words<V> mask, V original) noexcept {
+      if (!detail::ftz32_any(mask)) return {sine, cosine};
+      using B = detail::ftz32_bridge<V>; using U = detail::ftz32_words<V>;
+      std::array<std::uint32_t, V::lanes> flags, input, sine_words, cosine_words;
+      mask.store(flags.data()); B::encode(original).store(input.data());
+      B::encode(sine).store(sine_words.data()); B::encode(cosine).store(cosine_words.data());
+      for (std::size_t lane = 0; lane < V::lanes; ++lane) {
+        if (flags[lane] != 0) {
+          auto pair = detail::ftz32_sincos<Hardware>(input[lane]);
+          sine_words[lane] = pair.sine; cosine_words[lane] = pair.cosine;
+        }
+      }
+      return {B::decode(U::load(sine_words.data())), B::decode(U::load(cosine_words.data()))};
+    }
     // All register chains enter the existing stage-interleaved polynomial in one
     // call. Only out-of-domain lanes use the scalar full-range/special-value path.
     template <detail::ftz32_value R, std::size_t N>
@@ -845,11 +863,10 @@ export namespace ftz {
           std::array{B::decode(B::encode(original) & allowed)...});
         auto const & [...sine] = sine_values;
         auto const & [...cosine] = cosine_values;
-        return std::pair{
-          std::array{detail::ftz32_wrap<R>(detail::ftz32_repair<detail::ftz32_sin<R::hardware>>(
-            sine, allowed ^ U(0xffffffffu), original))...},
-          std::array{detail::ftz32_wrap<R>(detail::ftz32_repair<detail::ftz32_cos<R::hardware>>(
-            cosine, allowed ^ U(0xffffffffu), original))...}};
+        auto const [...repaired] = std::array{repair_sincos<R::hardware>(
+          sine, cosine, allowed ^ U(0xffffffffu), original)...};
+        return std::pair{std::array{detail::ftz32_wrap<R>(repaired.first)...},
+          std::array{detail::ftz32_wrap<R>(repaired.second)...}};
       }
     }
     template <bool Cosine, detail::ftz32_value R, std::size_t N>
