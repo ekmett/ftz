@@ -66,16 +66,21 @@ otherwise trigger the pinned cache's `@` bypass. The launcher accepts only
 `-x c++-module`, quoted module output paths and named module input paths with
 simple nonempty ASCII values. It expands argv without changing CMake's files.
 Unknown syntax, whitespace inside values, malformed/compound quotes, escapes,
-nested/other response files or size limits preserve the original invocation.
-An `E2BIG` retry also restores the original response arguments. This is not a
-general response-file parser; paths with spaces inside module maps retain the
-original bypass. Windows keeps direct sccache because clang-cl's PCH and
-forwarded module flags remain unsupported by the pinned release.
+nested/other response files or size limits preserve the original compiler
+arguments and bypass caching directly. An `E2BIG` retry also executes the
+original compiler directly. This is not a general response-file parser.
+Explicit `-include-pch` binary inputs, including CMake's `-Xclang` spelling,
+are appended to `SCCACHE_EXTRAFILES`; existing entries are preserved. The
+pinned sccache version does not otherwise hash these PCH binaries, which can
+leave a cached module referring to a different PCH. Ambiguous or missing PCH
+inputs bypass caching. Windows keeps direct sccache because clang-cl's PCH
+and forwarded module flags remain unsupported by the pinned release.
 
-The launcher and its seven semantic test methods are copied unchanged from
-[SIMD `0331d2a`](https://github.com/ekmett/simd/tree/0331d2ac68eec00feb74447005a29b34ac97a83e/.github/scripts).
-Keep the implementations aligned when updating them. POSIX CI runs the tests
-with `python3 -B .github/scripts/test_sccache_launcher.py`.
+The launcher and tests are shared with SIMD; keep the implementations aligned.
+POSIX CI runs `test_sccache_launcher.py` and the real PCH/module warm-cache
+fixture `test_sccache_pch.py`. Neither disables PCH validation. See the
+[validation boundary](https://github.com/ekmett/ftz/blob/main/docs/validation.md#pch-dependent-module-invalidation)
+for the observed regression and checks required of this repair.
 
 For local producer builds, install sccache separately and put it on `PATH`.
 Add `-DCMAKE_CXX_COMPILER_LAUNCHER=sccache` for its normal local disk cache, or
