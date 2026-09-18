@@ -29,7 +29,46 @@ namespace {
    for(std::size_t j=0;j<2;++j)compare(s.registers[j],c.registers[j],pair.first.registers[j],pair.second.registers[j]);
   }
  }
+ // Explicit repair densities compare every packed output to the scalar pair,
+ // rather than comparing two vector paths that might share the same error.
+ template<class F,std::size_t N> void repair_densities(){
+  using V=simd::vec<F,N,FTZ_TEST_ARCH>;
+  constexpr std::array bounded{0u,0x80000000u,0x3f800000u,0xbf800000u,0x45ffffffu,0xc5ffffffu};
+  constexpr std::array exceptional{0x46000000u,0xc6000000u,0x46000001u,0xc6000001u,
+   0x4b000000u,0xcb000000u,0x7f7fffffu,0xff7fffffu,0x7f800000u,0xff800000u,
+   0x7fc00000u,0x7f800001u};
+  auto check=[](std::array<F,2*N> const & values){
+   V a=simd::load_simd<V>(values.data()),b=simd::load_simd<V>(values.data()+N);
+   auto check_register=[&](auto const & pair,std::size_t offset){
+    std::array<F,N> sine,cosine;
+    simd::store_simd(sine.data(),pair.first);simd::store_simd(cosine.data(),pair.second);
+    for(std::size_t lane=0;lane<N;++lane){
+     auto expected=sincos(values[offset+lane]);
+     compare(expected.first,expected.second,sine[lane],cosine[lane]);
+    }
+   };
+   check_register(sincos(a),0);check_register(sincos(b),N);
+   auto array_pair=sincos(std::array{a,b});
+   auto wide_pair=sincos(simd::wide{a,b});
+   for(std::size_t j=0;j<2;++j){
+    check_register(std::pair{array_pair.first[j],array_pair.second[j]},j*N);
+    check_register(std::pair{wide_pair.first.registers[j],wide_pair.second.registers[j]},j*N);
+   }
+  };
+  for(std::size_t offset=0;offset<exceptional.size();++offset){
+   std::array<F,2*N> values;
+   for(std::size_t lane=0;lane<2*N;++lane)values[lane]=F::from_bits(bounded[(lane+offset)%bounded.size()]);
+   check(values); // No repairs, including both sides immediately below 8192.
+   for(std::size_t lane=0;lane<2*N;++lane){
+    auto saved=values[lane];values[lane]=F::from_bits(exceptional[offset]);
+    check(values);values[lane]=saved; // One repair, at every logical lane.
+   }
+   for(std::size_t lane=0;lane<2*N;++lane)values[lane]=F::from_bits(exceptional[(lane+offset)%exceptional.size()]);
+   check(values); // Every lane repairs; large finite values and special values mix.
+  }
+ }
  template<class F,std::size_t N> void vectors(){
+  repair_densities<F,N>();
   using V=simd::vec<F,N,FTZ_TEST_ARCH>;
   auto check=[](V s,V c,V ps,V pc){
    std::array<F,N> a,b,pa,pb;
