@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
 #include <cstddef>
 #include "../core_regression/support/imports.h"
-using arch=FTZ_TEST_ARCH;
+constexpr auto arch=FTZ_TEST_ARCH;
 #if FTZ_TEST_PROFILE == 512
 constexpr std::size_t lanes=16;
 #elif FTZ_TEST_PROFILE == 256

@@ -9,7 +9,7 @@
 #include <utility>
 #include "support/imports.h"
 
-static_assert(std::same_as<decltype(simd::vec{FTZ_TEST_ARCH{},1.0f}), simd::vec<float, 1,FTZ_TEST_ARCH>>);
+static_assert(std::same_as<decltype(simd::vec<float,1,FTZ_TEST_ARCH>{1.0f}), simd::vec<float, 1,FTZ_TEST_ARCH>>);
 static_assert(sizeof(ftz::ftz32) == sizeof(float));
 static_assert(std::is_trivially_copyable_v<ftz::ftz32>);
 static_assert(std::same_as<decltype(ftz::sincos(ftz::ftz32{})),

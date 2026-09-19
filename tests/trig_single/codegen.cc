@@ -7,11 +7,11 @@
 #include <ftz/math.h>
 import simd;
 #if FTZ_TEST_PROFILE == 512
-using Arch=simd::avx512;
+constexpr auto Arch=simd::avx512;
 #elif FTZ_TEST_PROFILE == 128
-using Arch=simd::neon;
+constexpr auto Arch=simd::neon;
 #else
-using Arch=simd::avx2;
+constexpr auto Arch=simd::avx2;
 #endif
 using V=simd::vec<float,4,Arch>;
 namespace native=ftz::detail::native;

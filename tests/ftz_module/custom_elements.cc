@@ -34,7 +34,7 @@ namespace simd {
   };
 }
 
-template <class Arch,std::size_t N> constexpr bool independent_elements() {
+template <simd::isa Arch,std::size_t N> constexpr bool independent_elements() {
   using R = simd::vec<float,N,Arch>;
   using F = simd::vec<ftz::ftz32,N,Arch>;
   using S = simd::vec<fixture::second_scalar,N,Arch>;
@@ -50,10 +50,10 @@ template <class Arch,std::size_t N> constexpr bool independent_elements() {
   static_assert(std::same_as<decltype(std::declval<S>()<std::declval<S>()),typename R::mask>);
   static_assert(sizeof(S)==sizeof(R) && sizeof(F)==sizeof(R));
   if constexpr (N==1)
-    static_assert(std::same_as<decltype(simd::vec{Arch{},fixture::second_scalar{}}),
+    static_assert(std::same_as<decltype(simd::vec<fixture::second_scalar,1,Arch>{fixture::second_scalar{}}),
       simd::vec<fixture::second_scalar,1,Arch>>);
   else
-    static_assert(std::constructible_from<S,Arch,fixture::second_scalar>);
+    static_assert(std::constructible_from<S,fixture::second_scalar>);
   return true;
 }
 static_assert(independent_elements<simd::scalar,1>());
@@ -62,10 +62,10 @@ static_assert(independent_elements<simd::avx512,4>());
 static_assert(!std::same_as<simd::vec<fixture::second_scalar,4,simd::avx2>,
   simd::vec<fixture::second_scalar,4,simd::avx512>>);
 
-template<class Arch,std::size_t N>
+template<simd::isa Arch,std::size_t N>
 auto add_second() {
   using S = simd::vec<fixture::second_scalar,N,Arch>;
-  return S(Arch{},fixture::second_scalar{1.f}) + S(Arch{},fixture::second_scalar{2.f});
+  return S(fixture::second_scalar{1.f}) + S(fixture::second_scalar{2.f});
 }
 // Instantiate the dependent constructor/operator bodies as well as declarations.
 // This OBJECT fixture is never linked into a baseline entry point.
