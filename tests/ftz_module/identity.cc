@@ -10,8 +10,8 @@ import simd;
 using A = simd::vec<ftz::ftz32,8,simd::avx2>;
 using B = simd::vec<ftz::ftz32,16,simd::avx512>;
 // Redundant compiler-implied features must not create another FTZ vector type.
-constexpr auto canonical_avx2 = simd::avx2 & simd::feature::avx;
-constexpr auto canonical_avx512 = simd::avx512 & simd::feature::avx512f;
+constexpr auto canonical_avx2 = simd::avx2 & simd::x86_feature::avx;
+constexpr auto canonical_avx512 = simd::avx512 & simd::x86_feature::avx512f;
 static_assert(std::same_as<A,simd::vec<ftz::ftz32,8,canonical_avx2>>);
 static_assert(std::same_as<B,simd::vec<ftz::ftz32,16,canonical_avx512>>);
 static_assert(std::same_as<typename A::value_type,ftz::ftz32>);
