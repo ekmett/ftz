@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           repository: ekmett/simd
-          ref: 18fc0fb7199e56f43c3bdb34e2176472e5060213
+          ref: 75869ceeddca476365c00867395533237347dd4c
           path: build/deps/simd
           persist-credentials: false
       - name: Install documentation tools
