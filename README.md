@@ -48,12 +48,11 @@ not per element or task. Use unqualified math calls so argument-dependent lookup
 selects the element type's arithmetic. The [compiled examples](tests/api/README.md)
 cover conversions, scopes, memory, masks, swizzles, arrays and shaders.
 
-The [updated SIMD package](https://github.com/ekmett/simd/commit/d73f654d1857fca0c56b2610174ec34d5dd99832)
-also provides `wide::array<R,N>`. FTZ's `exp(values)`
-overload keeps that homogeneous array shape and its `m32`/`h32` element policy,
-including empty arrays. It uses the same polynomial as scalar and native SIMD
-exp, through the existing FTZ adapter. This interface requires rebuilding against
-that updated SIMD package; tuples are not exp inputs.
+Use `std::array<R,N>` for homogeneous exponential batches. FTZ's `exp(values)`
+overload keeps the array shape and its `m32`/`h32` element policy, including empty
+arrays. The matching [SIMD update](https://github.com/ekmett/simd/commit/b309bbc9656970e7ea00dc91ce4de9e418c1b8a7) shares one
+polynomial across scalar, native SIMD and array exp through the existing FTZ
+adapter. Rebuild FTZ against that SIMD package; tuples are not exp inputs.
 
 ## The boundaries matter
 

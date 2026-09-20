@@ -21,10 +21,10 @@ namespace {
   template<class T> concept adl_exp=requires(T const & value) { exp(value); };
   template<class T> concept ftz_exp=requires(T const & value) { ftz::exp(value); };
 
-  static_assert(!adl_exp<::wide::tuple<M>> && !adl_exp<::wide::tuple<M,M>>);
-  static_assert(!adl_exp<::wide::tuple<float,M>> && !adl_exp<::wide::tuple<M,H>>);
+  static_assert(!adl_exp<std::tuple<M,M>> && !adl_exp<std::tuple<M,H>>);
   static_assert(!adl_exp<std::tuple<M>> && !adl_exp<std::tuple<float,M>>);
-  static_assert(!ftz_exp<::wide::array<float,3>>);
+  static_assert(!adl_exp<std::tuple<V<M,4>,V<M,4>>>);
+  static_assert(!ftz_exp<std::array<float,3>>);
 
   void require(bool condition,char const * message) {
     if (!condition) { std::fprintf(stderr,"%s\n",message); std::abort(); }
@@ -71,37 +71,44 @@ namespace {
       return R::load_bits(raw.data());
     }
   }
+  template<class R> auto native_input(R const & value) {
+    if constexpr (ftz::ftz32_type<R>)
+      return simd::vec<float,1,simd::scalar>(value.to_float());
+    else return value.to_native();
+  }
   template<class F,class R,std::size_t N>
   void arrays(packet & output,packet const & samples) {
-    using A=::wide::array<R,N>;
+    using A=std::array<R,N>;
+    using Raw=decltype(native_input(std::declval<R const &>()));
+    static_assert(N==0 || alignof(A)>=alignof(R));
+    static_assert(N==0 || alignof(std::array<Raw,N>)>=alignof(Raw));
     static_assert(std::same_as<decltype(exp(std::declval<A const &>())),A>);
     static_assert(std::same_as<decltype(ftz::exp(std::declval<A const &>())),A>);
     static_assert(noexcept(exp(std::declval<A const &>())));
     if constexpr (N==0) {
       auto result=exp(A{});
-      require(result.values.empty(),"empty FTZ wide exp changed extent");
+      require(result.empty(),"empty FTZ array exp changed extent");
     } else for (std::size_t offset=0;offset<samples.size();++offset) {
       A value{};
       for (std::size_t reg=0;reg<N;++reg)
-        value.values[reg]=input<R>(samples,offset+reg*11);
+        value[reg]=input<R>(samples,offset+reg*11);
       auto result=exp(value);
-      auto standard=ftz::exp(value.values);
-      auto legacy=exp(simd::wide<R,N>{value.values});
+      auto legacy=exp(simd::wide<R,N>{value});
       for (std::size_t reg=0;reg<N;++reg) {
-        auto original=words(value.values[reg]);
-        auto actual=words(result.values[reg]);
-        auto prior=words(standard[reg]);
+        auto original=words(value[reg]);
+        auto actual=words(result[reg]);
+        auto native=words(simd::exp(native_input(value[reg]),std::true_type{}));
         auto old_wide=words(legacy.registers[reg]);
         for (std::size_t lane=0;lane<lanes<R>;++lane) {
           auto raw=samples[(offset+reg*11+lane*7)%samples.size()];
           require(original[lane]==canonical(raw),"FTZ factory failed to canonicalize input");
           auto expected=ftz::exp(F::from_bits(raw)).to_bits();
           if (!ftz::math_test::equivalent_fp32(actual[lane],expected)) {
-            std::fprintf(stderr,"FTZ wide exp mismatch N=%zu lanes=%zu reg=%zu lane=%zu input=%08x actual=%08x expected=%08x\n",
+            std::fprintf(stderr,"FTZ array exp mismatch N=%zu lanes=%zu reg=%zu lane=%zu input=%08x actual=%08x expected=%08x\n",
               N,lanes<R>,reg,lane,raw,actual[lane],expected);
             std::abort();
           }
-          require(ftz::math_test::equivalent_fp32(actual[lane],prior[lane]),"std::array exp differs");
+          require(ftz::math_test::equivalent_fp32(actual[lane],native[lane]),"native register exp differs");
           require(ftz::math_test::equivalent_fp32(actual[lane],old_wide[lane]),"legacy wide exp differs");
           require(canonical(actual[lane])==actual[lane],"FTZ exp returned a subnormal");
           output.push_back(actual[lane]);
@@ -126,9 +133,9 @@ namespace {
     return output;
   }
   void equal(packet const & a,packet const & b) {
-    require(a.size()==b.size(),"FTZ wide exp policy packet size differs");
+    require(a.size()==b.size(),"FTZ array exp policy packet size differs");
     for (std::size_t i=0;i<a.size();++i)
-      require(ftz::math_test::equivalent_fp32(a[i],b[i]),"FTZ wide exp policy packet differs");
+      require(ftz::math_test::equivalent_fp32(a[i],b[i]),"FTZ array exp policy packet differs");
   }
 }
 
@@ -147,6 +154,6 @@ int main() {
     manual_flush=evaluate<M>(samples); hardware_flush=evaluate<H>(samples);
   }
   equal(manual_gradual,manual_flush); equal(manual_gradual,hardware_flush);
-  std::printf("FTZ wide exp passed: profile=%d inputs=%zu packet=%zu words; manual gradual/flush and hardware flush agree\n",
+  std::printf("FTZ array exp passed: profile=%d inputs=%zu packet=%zu words; manual gradual/flush and hardware flush agree\n",
     FTZ_TEST_PROFILE,samples.size(),hardware_flush.size());
 }

@@ -1114,14 +1114,6 @@ export namespace ftz {
     return detail::ftz32_math::exp(input);
   }
   /// \ingroup ftz_register_arrays
-  /// \brief Evaluates one shared exponential graph across a homogeneous register
-  /// array, retaining its FTZ element policy and extent. N may be zero.
-  template<detail::ftz32_value R, std::size_t N>
-  simd_nodiscard simd_inline ::wide::array<R,N> exp(::wide::array<R,N> const & input) noexcept {
-    if constexpr (N == 0) return input;
-    else return {detail::ftz32_math::exp(input.values)};
-  }
-  /// \ingroup ftz_register_arrays
   /// \brief Computes exp(x)-1 with the scalar FTZ graph, preserving signed zero. Returns std::array<R,N>.
   template<detail::ftz32_value R, std::size_t N>
   simd_nodiscard simd_inline auto expm1(std::array<R,N> const & input) noexcept {
