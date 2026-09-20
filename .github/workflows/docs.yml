@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           repository: ekmett/simd
-          ref: 3617f667a7a908d957d910c226da7a3d453a05f6
+          ref: 1265645722d8bc7c7dab32d6ba43df5d362115aa
           path: build/deps/simd
           persist-credentials: false
       - name: Install documentation tools
@@ -45,7 +45,7 @@ jobs:
       - name: Install header-only dependency
         run: |
           cmake -S build/deps/simd -B build/simd -G Ninja \
-            -DSIMD_BUILD_HOST=OFF -DSIMD_BUILD_TESTS=OFF
+            -DNATIVE_BUILD_HOST=OFF -DNATIVE_BUILD_TESTS=OFF
           cmake --install build/simd --prefix "$GITHUB_WORKSPACE/build/prefix"
       - name: Generate C++ and HLSL references
         run: |

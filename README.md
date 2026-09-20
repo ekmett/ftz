@@ -4,7 +4,7 @@ I want binary32 arithmetic whose operation graph is explicit: where rounding
 happens, when subnormals become signed zero, and which operations are fused.
 FTZ gives that contract a type, in C++26 and HLSL 2021.
 
-I keep arithmetic policy separate from register layout. [SIMD](https://github.com/ekmett/simd)
+I keep arithmetic policy separate from register layout. [native](https://github.com/ekmett/simd)
 owns vectors, masks, ISA values and wide register packs. FTZ supplies the
 element type and its operations. Changing the number of registers does not
 change the arithmetic policy.
@@ -29,15 +29,16 @@ arithmetic contract, processes 96 values and restores the caller's FP state.
 
 ```cpp
 import ftz;
-import simd;
+import native;
+import native.wide;
 
 bool example() {
   ftz::native_fp32_scope region(ftz::native_fp32_mode::gradual);
   if (!ftz::probe_ftz32_cpu<ftz::m32>().admitted()) return false;
 
-  using V = simd::vec<ftz::m32, 8, simd::avx2>;
+  using V = native::simd<ftz::m32, 8, native::avx2>;
   V x(ftz::m32(.25f));
-  simd::wide<V, 12> values(x);
+  native::wide<V, 12> values(x);
   auto y = expm1(values);
   return all(isfinite(y.registers[0]));
 }
@@ -50,9 +51,9 @@ cover conversions, scopes, memory, masks, swizzles, arrays and shaders.
 
 Use `std::array<R,N>` for homogeneous exponential batches. FTZ's `exp(values)`
 overload keeps the array shape and its `m32`/`h32` element policy, including empty
-arrays. The matching [SIMD update](https://github.com/ekmett/simd/commit/b309bbc9656970e7ea00dc91ce4de9e418c1b8a7) shares one
+arrays. The matching [native update](https://github.com/ekmett/simd/commit/1265645722d8bc7c7dab32d6ba43df5d362115aa) shares one
 polynomial across scalar, native SIMD and array exp through the existing FTZ
-adapter. Rebuild FTZ against that SIMD package; tuples are not exp inputs.
+adapter. Rebuild FTZ against that native package; tuples are not exp inputs.
 
 ## The boundaries matter
 

@@ -17,7 +17,7 @@ namespace {
   using M=ftz::m32;
   using H=ftz::h32;
   using packet=std::vector<std::uint32_t>;
-  template<class F,std::size_t N> using V=simd::vec<F,N,FTZ_TEST_ARCH>;
+  template<class F,std::size_t N> using V=::native::simd<F,N,FTZ_TEST_ARCH>;
   template<class T> concept adl_exp=requires(T const & value) { exp(value); };
   template<class T> concept ftz_exp=requires(T const & value) { ftz::exp(value); };
 
@@ -73,7 +73,7 @@ namespace {
   }
   template<class R> auto native_input(R const & value) {
     if constexpr (ftz::ftz32_type<R>)
-      return simd::vec<float,1,simd::scalar>(value.to_float());
+      return ::native::simd<float,1,::native::scalar>(value.to_float());
     else return value.to_native();
   }
   template<class F,class R,std::size_t N>
@@ -93,11 +93,11 @@ namespace {
       for (std::size_t reg=0;reg<N;++reg)
         value[reg]=input<R>(samples,offset+reg*11);
       auto result=exp(value);
-      auto legacy=exp(simd::wide<R,N>{value});
+      auto legacy=exp(::native::wide<R,N>{value});
       for (std::size_t reg=0;reg<N;++reg) {
         auto original=words(value[reg]);
         auto actual=words(result[reg]);
-        auto native=words(simd::exp(native_input(value[reg]),std::true_type{}));
+        auto native=words(::native::exp(native_input(value[reg]),std::true_type{}));
         auto old_wide=words(legacy.registers[reg]);
         for (std::size_t lane=0;lane<lanes<R>;++lane) {
           auto raw=samples[(offset+reg*11+lane*7)%samples.size()];

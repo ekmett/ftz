@@ -52,7 +52,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           repository: ekmett/simd
-          ref: 3617f667a7a908d957d910c226da7a3d453a05f6
+          ref: 1265645722d8bc7c7dab32d6ba43df5d362115aa
           path: build/deps/simd
           persist-credentials: false
       # Use the setup actions from the same pinned, qualified SIMD revision.
@@ -178,9 +178,9 @@ jobs:
             -DCMAKE_CXX_COMPILER="$compiler" -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER="$launcher" \
             -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DSIMD_BUILD_TESTS=OFF -DSIMD_BUILD_DOCS=OFF \
-            -DSIMD_ENABLE_EXCEPTIONS=ON -DSIMD_ENABLE_PCH=ON -DSIMD_ENABLE_IPO=ON \
-            -DSIMD_PROFILES="${{ matrix.profile }}" "${extra[@]}" \
+            -DNATIVE_BUILD_TESTS=OFF -DNATIVE_BUILD_DOCS=OFF \
+            -DNATIVE_ENABLE_EXCEPTIONS=ON -DNATIVE_ENABLE_PCH=ON -DNATIVE_ENABLE_IPO=ON \
+            -DNATIVE_PROFILES="${{ matrix.profile }}" "${extra[@]}" \
             2>&1 | tee build/logs/simd-configure.log
           cmake --build build/simd --parallel 2 2>&1 | tee build/logs/simd-build.log
           cmake --install build/simd --prefix "$GITHUB_WORKSPACE/build/install/simd" \
@@ -203,7 +203,7 @@ jobs:
             -DCMAKE_CXX_COMPILER="$compiler" -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER="$launcher" \
             -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -Dsimd_DIR="$GITHUB_WORKSPACE/build/install/simd/lib/cmake/simd" \
+            -Dnative_DIR="$GITHUB_WORKSPACE/build/install/simd/lib/cmake/native" \
             -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
             -DFTZ_BUILD_TESTS=ON -DFTZ_BUILD_DOCS=OFF \
             -DFTZ_BUILD_MPFR_TESTS=${{ matrix.runner == 'ubuntu-24.04' }} \
@@ -238,7 +238,7 @@ jobs:
             cmake -S "tests/$suite" -B "build/$suite" -G Ninja \
               -DCMAKE_CXX_COMPILER="$compiler" -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-              -Dsimd_DIR="$GITHUB_WORKSPACE/build/relocated packages/simd/lib/cmake/simd" \
+              -Dnative_DIR="$GITHUB_WORKSPACE/build/relocated packages/simd/lib/cmake/native" \
               -Dftz_DIR="$GITHUB_WORKSPACE/build/relocated packages/ftz/lib/cmake/ftz" \
               -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
               "${extra[@]}" "${options[@]}" 2>&1 | tee "build/logs/$suite-configure.log"

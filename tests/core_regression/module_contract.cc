@@ -9,7 +9,7 @@
 #include <utility>
 #include "support/imports.h"
 
-static_assert(std::same_as<decltype(simd::vec<float,1,FTZ_TEST_ARCH>{1.0f}), simd::vec<float, 1,FTZ_TEST_ARCH>>);
+static_assert(std::same_as<decltype(::native::simd<float,1,FTZ_TEST_ARCH>{1.0f}), ::native::simd<float, 1,FTZ_TEST_ARCH>>);
 static_assert(sizeof(ftz::ftz32) == sizeof(float));
 static_assert(std::is_trivially_copyable_v<ftz::ftz32>);
 static_assert(std::same_as<decltype(ftz::sincos(ftz::ftz32{})),
@@ -22,9 +22,9 @@ void emit(std::ostream & out, std::uint32_t bits) {
 }
 
 template<std::size_t N> void capture(std::ostream & out) {
-  using V = simd::vec<ftz::ftz32, N,FTZ_TEST_ARCH>;
-  using F = simd::vec<float, N,FTZ_TEST_ARCH>;
-  using I = simd::vec<std::uint32_t, N,FTZ_TEST_ARCH>;
+  using V = ::native::simd<ftz::ftz32, N,FTZ_TEST_ARCH>;
+  using F = ::native::simd<float, N,FTZ_TEST_ARCH>;
+  using I = ::native::simd<std::uint32_t, N,FTZ_TEST_ARCH>;
   std::uint32_t seed = 0x893bfd12u;
   for (std::size_t step = 0; step < 512; ++step) {
     std::array<float, N> input{};
@@ -33,9 +33,9 @@ template<std::size_t N> void capture(std::ostream & out) {
       x = float(int(seed & 0xffffu) - 32768) * 0x1p-10f;
     }
     auto a = V::loadu(input.data());
-    simd::wide<V, 3> values{a, a * V(.5f), a * V(.25f)};
+    ::native::wide<V, 3> values{a, a * V(.5f), a * V(.25f)};
     auto [...lanes] = values;
-    auto reconstructed = simd::wide{lanes...};
+    auto reconstructed = ::native::wide{lanes...};
     auto result = exp(reconstructed);
     auto [s, c] = sincos(reconstructed);
     auto m = expm1(reconstructed);
@@ -46,7 +46,7 @@ template<std::size_t N> void capture(std::ostream & out) {
         for (auto word : words) emit(out, word);
       }
     }
-    auto raw = exp(simd::wide<F, 2>{F::loadu(input.data())});
+    auto raw = exp(::native::wide<F, 2>{F::loadu(input.data())});
     for (auto v : raw.registers) {
       std::array<std::uint32_t, N> words{};
       v.store_bits(words.data());

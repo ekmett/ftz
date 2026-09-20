@@ -7,10 +7,11 @@
 #include <type_traits>
 #include <utility>
 import ftz;
-import simd;
+import native;
+import native.math;
 #if REVIEW_AVX512
-constexpr auto arch=simd::avx512;
+constexpr auto arch=::native::avx512;
 #else
-constexpr auto arch=simd::avx2;
+constexpr auto arch=::native::avx2;
 #endif
-import simd.wide;
+import native.wide;

@@ -13,19 +13,19 @@
 import ftz;
 
 // Older SIMD packages have no configured modern minimum and must stay pre-AVX.
-#ifndef SIMD_MINIMAL_HAS_AVX2
+#ifndef NATIVE_MINIMAL_HAS_AVX2
 #if defined(__AVX__)
 #error Unexpected AVX in a consumer of a legacy baseline SIMD package
 #endif
-#define SIMD_MINIMAL_HAS_AVX2 0
+#define NATIVE_MINIMAL_HAS_AVX2 0
 #endif
-#ifndef SIMD_MINIMAL_HAS_AVX512
-#define SIMD_MINIMAL_HAS_AVX512 0
+#ifndef NATIVE_MINIMAL_HAS_AVX512
+#define NATIVE_MINIMAL_HAS_AVX512 0
 #endif
-#if defined(__AVX2__) != SIMD_MINIMAL_HAS_AVX2
+#if defined(__AVX2__) != NATIVE_MINIMAL_HAS_AVX2
 #error Consumer AVX2 capability differs from the configured SIMD minimum
 #endif
-#if (defined(__AVX512F__) || defined(__AVX512DQ__) || defined(__AVX512BW__) || defined(__AVX512VL__)) != SIMD_MINIMAL_HAS_AVX512
+#if (defined(__AVX512F__) || defined(__AVX512DQ__) || defined(__AVX512BW__) || defined(__AVX512VL__)) != NATIVE_MINIMAL_HAS_AVX512
 #error Consumer AVX512 capability differs from the configured SIMD minimum
 #endif
 
@@ -62,8 +62,8 @@ namespace {
 #endif
     if ((xcr0 & 6u) != 6u) return 0;
     cpuid(7, 0, r);
-    // The actual profile flags require AVX2, FMA and BMI2.
-    constexpr unsigned avx2 = (1u << 5) | (1u << 8);
+    // The actual profile flags require AVX2 and FMA.
+    constexpr unsigned avx2 = (1u << 5);
     unsigned result = (r[1] & avx2) == avx2 ? 1u : 0u;
     constexpr unsigned avx512 = (1u << 16) | (1u << 17) | (1u << 30) | (1u << 31);
     if (result && (r[1] & avx512) == avx512 && (xcr0 & 0xe6u) == 0xe6u)

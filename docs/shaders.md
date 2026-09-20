@@ -5,7 +5,7 @@ what a shader device does, so I keep shader policy selection and admission
 separate from the host types.
 
 `find_package(ftz CONFIG REQUIRED COMPONENTS hlsl)` supplies `ftz::hlsl`, its
-public shader include directories, and the `simd::headers` dependency. Configure
+public shader include directories, and the `native::headers` dependency. Configure
 `FTZ_BUILD_HOST=OFF` to install these without a host compiler. Consumers own shader
 entry points and compiler invocations; `ftz::hlsl` is a header library.
 

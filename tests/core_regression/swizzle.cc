@@ -14,13 +14,13 @@
 
 namespace {
   using F=ftz::ftz32;
-  template<std::size_t N> using V=simd::vec<F,N,FTZ_TEST_ARCH>;
+  template<std::size_t N> using V=::native::simd<F,N,FTZ_TEST_ARCH>;
   void require(bool condition,char const * message) {
     if(!condition) { std::fprintf(stderr,"%s\n",message);std::abort(); }
   }
   template<std::size_t N> auto words(V<N> const & value) {
     std::array<F,N> lanes{};
-    simd::store_simd(lanes.data(),value);
+    ::native::store_simd(lanes.data(),value);
     std::array<std::uint32_t,N> result{};
     for(std::size_t i=0;i<N;++i)result[i]=lanes[i].to_bits();
     return result;
@@ -29,7 +29,7 @@ namespace {
     std::array<F,N> lanes{};
     for(std::size_t i=0;i<N;++i)
       lanes[i]=F::unsafe_from_float32(std::bit_cast<float>(input[i]));
-    return simd::load_simd<V<N>>(lanes);
+    return ::native::load_simd<V<N>>(lanes);
   }
   template<std::size_t N> void exact(V<N> const & value,
       std::array<std::uint32_t,N> const & expected,char const * message) {
@@ -43,7 +43,7 @@ namespace {
     using T=V<N>;
     static_assert(sizeof(T)==16 && alignof(T)==16 && std::is_trivially_copyable_v<T>);
     static_assert(std::same_as<typename T::value_type,F>);
-    static_assert(std::same_as<typename T::mask,typename simd::vec<float,N,FTZ_TEST_ARCH>::mask>);
+    static_assert(std::same_as<typename T::mask,typename ::native::simd<float,N,FTZ_TEST_ARCH>::mask>);
     static_assert(std::same_as<decltype(std::declval<T &>().xy),V<2>>);
     static_assert(std::same_as<decltype((std::declval<T &>().xy)),V<2>>);
     static_assert(std::same_as<decltype(std::declval<T &>().x),F>);
@@ -104,8 +104,8 @@ namespace {
         b[lane]=F::from_bits(bank[(j+lane*3)%bank.size()]);
         c[lane]=F::from_bits(bank[(i+j+lane*7)%bank.size()]);
       }
-      auto sa=simd::load_simd<V<N>>(a.data()),sb=simd::load_simd<V<N>>(b.data()),sc=simd::load_simd<V<N>>(c.data());
-      auto fa=simd::load_simd<V<4>>(a),fb=simd::load_simd<V<4>>(b),fc=simd::load_simd<V<4>>(c);
+      auto sa=::native::load_simd<V<N>>(a.data()),sb=::native::load_simd<V<N>>(b.data()),sc=::native::load_simd<V<N>>(c.data());
+      auto fa=::native::load_simd<V<4>>(a),fb=::native::load_simd<V<4>>(b),fc=::native::load_simd<V<4>>(c);
       active_lanes(sa+sb,fa+fb,"add");active_lanes(sa-sb,fa-fb,"sub");
       active_lanes(sa*sb,fa*fb,"mul");active_lanes(sa/sb,fa/fb,"div");
       active_lanes(fma(sa,sb,sc),fma(fa,fb,fc),"fma");

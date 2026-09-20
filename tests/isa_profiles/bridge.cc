@@ -13,11 +13,11 @@
 
 namespace {
   constexpr std::size_t lanes = FTZ_TEST_PROFILE / 32;
-  using V = simd::vec<ftz::ftz32, lanes,FTZ_TEST_ARCH>;
-  using F = simd::vec<float, lanes,FTZ_TEST_ARCH>;
+  using V = ::native::simd<ftz::ftz32, lanes,FTZ_TEST_ARCH>;
+  using F = ::native::simd<float, lanes,FTZ_TEST_ARCH>;
   static_assert(sizeof(V) == sizeof(float) * lanes);
   static_assert(std::is_trivially_copyable_v<V>);
-  using packed_values = simd::wide<V,3>;
+  using packed_values = ::native::wide<V,3>;
   static_assert(std::same_as<decltype(exp(std::declval<packed_values const &>())),packed_values>);
   static_assert(std::same_as<decltype(sincos(std::declval<packed_values const &>())),
     std::pair<packed_values,packed_values>>);
@@ -52,7 +52,7 @@ namespace {
   }
 
   template<std::size_t N> bool tails() {
-    using R = simd::vec<ftz::ftz32, N,FTZ_TEST_ARCH>;
+    using R = ::native::simd<ftz::ftz32, N,FTZ_TEST_ARCH>;
     ftz::test::guarded_pages input_page, output_page;
     for (std::size_t n = 0; n <= N; ++n) {
       auto * input = reinterpret_cast<float *>(input_page.end()) - n;
@@ -93,12 +93,12 @@ extern "C" std::size_t FTZ_TEST_ENTRY(std::uint32_t * out, std::size_t capacity)
     for (std::size_t op = 0; op < results.size(); ++op)
       out[op * profile_test::count + i] = results[op].to_bits();
   }
-  simd::wide<V, profile_test::count / lanes> packed;
+  ::native::wide<V, profile_test::count / lanes> packed;
   for (std::size_t i = 0; i < packed.registers.size(); ++i)
     packed.registers[i] = V::loadu(input.data() + i * lanes);
-  auto exponential = simd::exp(packed);
-  auto exp_minus_one = simd::expm1(packed);
-  auto [sine, cosine] = simd::sincos(packed);
+  auto exponential = ::native::exp(packed);
+  auto exp_minus_one = ::native::expm1(packed);
+  auto [sine, cosine] = ::native::sincos(packed);
   for (std::size_t i = 0; i < packed.registers.size(); ++i) {
     auto offset = i * lanes;
     store_column(out, 10, offset, exponential.registers[i]);
@@ -117,13 +117,13 @@ extern "C" std::size_t FTZ_TEST_ENTRY(std::uint32_t * out, std::size_t capacity)
     std::array<float, lanes> raw_input;
     for (std::size_t j = 0; j < lanes; ++j)
       raw_input[j] = float(int(offset + j) - 48) * .25f;
-    store_column(out, 20, offset, simd::exp(simd::wide<F, 1>{F::loadu(raw_input.data())}).registers[0]);
+    store_column(out, 20, offset, ::native::exp(::native::wide<F, 1>{F::loadu(raw_input.data())}).registers[0]);
     // Compile and execute the direct-register adapter as well as the wide path.
     std::array<std::uint32_t, lanes> direct;
-    simd::exp(F::loadu(raw_input.data())).store_bits(direct.data());
+    ::native::exp(F::loadu(raw_input.data())).store_bits(direct.data());
     for (std::size_t j = 0; j < lanes; ++j)
       if (direct[j] != out[20 * profile_test::count + offset + j]) return 0;
-    using I = simd::vec<std::uint32_t, lanes,FTZ_TEST_ARCH>;
+    using I = ::native::simd<std::uint32_t, lanes,FTZ_TEST_ARCH>;
     auto integer = I::loadu(out + 19 * profile_test::count + offset);
     ((integer + I(3u)) ^ I(0x9e3779b9u)).storeu(out + 21 * profile_test::count + offset);
     store_column(out, 22, offset, masked_scaleb_zero(

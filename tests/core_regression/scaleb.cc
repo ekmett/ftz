@@ -15,7 +15,7 @@
 #include "support/imports.h"
 
 namespace {
-  using namespace simd;
+  using namespace native;
   using namespace ftz;
   using word = std::uint32_t;
   constexpr word sign_bit=0x80000000u, infinity=0x7f800000u, quiet_nan=0x7fc00000u;
@@ -133,7 +133,7 @@ namespace {
   template<class V,class M> std::size_t check_mask(std::vector<row> const & rows,bool daz,bool output_flush,bool raw_before_rounding) {
     constexpr auto N=V::lanes;
     constexpr bool ftz=std::same_as<typename V::value_type,ftz32>;
-    using E=simd::vec<float,N,FTZ_TEST_ARCH>;
+    using E=::native::simd<float,N,FTZ_TEST_ARCH>;
     static_assert(std::same_as<decltype(scaleb(std::declval<V>(),std::declval<E>())),V>);
     static_assert(std::same_as<decltype(masked_scaleb(std::declval<M>(),std::declval<V>(),std::declval<V>(),std::declval<E>())),V>);
     static_assert(std::same_as<decltype(masked_scaleb_zero(std::declval<M>(),std::declval<V>(),std::declval<E>())),V>);
@@ -186,7 +186,7 @@ namespace {
     return checked;
   }
   template<std::size_t N> std::size_t check_width(std::vector<row> const & rows,bool daz,bool output_flush,bool raw_before_rounding,bool admitted) {
-    using F=simd::vec<float,N,FTZ_TEST_ARCH>;using T=simd::vec<ftz32,N,FTZ_TEST_ARCH>;using M=simd::vec<mask32,N,FTZ_TEST_ARCH>;
+    using F=::native::simd<float,N,FTZ_TEST_ARCH>;using T=::native::simd<ftz32,N,FTZ_TEST_ARCH>;using M=::native::simd<mask32,N,FTZ_TEST_ARCH>;
     auto checked=check_mask<F,M>(rows,daz,output_flush,raw_before_rounding);
     if(admitted) checked+=check_mask<T,M>(rows,daz,output_flush,raw_before_rounding);
     if constexpr(!std::same_as<typename F::mask,M>) {

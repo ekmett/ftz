@@ -5,7 +5,7 @@
 #include <cstdio>
 #include "../core_regression/support/imports.h"
 
-static_assert(std::is_same_v<simd::vec<ftz::ftz32,4,FTZ_TEST_ARCH>::value_type, ftz::ftz32>);
+static_assert(std::is_same_v<::native::simd<ftz::ftz32,4,FTZ_TEST_ARCH>::value_type, ftz::ftz32>);
 int main() {
   auto const caller = ftz::read_native_fp_state();
   for (auto mode : {ftz::native_fp32_mode::gradual, ftz::native_fp32_mode::flush}) {
@@ -16,10 +16,10 @@ int main() {
     if (!expected && admission.failure != ftz::ftz32_cpu_failure::hardware_ftz) return 2;
     if (!expected) continue;
     using F = ftz::ftz32;
-    using V = simd::vec<F,4,FTZ_TEST_ARCH>;
+    using V = ::native::simd<F,4,FTZ_TEST_ARCH>;
     F scalar = ftz::fma(F(1.f), F(2.f), F(3.f));
     if (scalar.to_bits() != 0x40a00000u) return 3;
-    simd::wide<V,3> a(V(1.f)), b(V(2.f)), c(V(3.f));
+    ::native::wide<V,3> a(V(1.f)), b(V(2.f)), c(V(3.f));
     auto result = fma(a,b,c);
     bool correct = true;
     for (auto value : result.registers) {

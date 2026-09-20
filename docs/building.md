@@ -1,19 +1,19 @@
 # Building and consuming FTZ
 
-I build FTZ against an installed [SIMD](https://github.com/ekmett/simd) package.
+I build FTZ against an installed [native](https://github.com/ekmett/simd) package.
 I keep the producer and every consuming library on one compiler/runtime
 configuration; incompatible BMIs are not an application boundary.
 
 ## Native packages
 
-Use Clang 23, CMake 4.4 and Ninja, with an installed SIMD package. Both packages
+Use Clang 23, CMake 4.4 and Ninja, with an installed native package. Both packages
 must use compatible compiler, standard-library, exception and floating-point
 settings. CMake rebuilds consumer BMIs from installed module sources. Keep one
 consistent dependency configuration through an application and its libraries.
 
 ```sh
 cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ \
-  -DCMAKE_PREFIX_PATH=/path/to/simd -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH=/path/to/native -DCMAKE_BUILD_TYPE=Release \
   -DFTZ_ENABLE_PCH=ON -DFTZ_ENABLE_IPO=ON
 cmake --build build --parallel 2
 ctest --test-dir build --output-on-failure
@@ -25,29 +25,28 @@ On a host admitted for AVX-512, set `-DFTZ_TEST_PROFILES="AVX2;AVX512"`
 to exercise both native widths; the test executables assume their selected ISA
 is available. Merely compiling an ISA provider does not establish that.
 Exceptions default to disabled. An exception-enabled
-consumer uses packages built with both `SIMD_ENABLE_EXCEPTIONS=ON` and
+consumer uses packages built with both `NATIVE_ENABLE_EXCEPTIONS=ON` and
 `FTZ_ENABLE_EXCEPTIONS=ON`.
 
 ```cmake
 find_package(ftz CONFIG REQUIRED COMPONENTS ftz)
 add_executable(example example.cc)
-target_link_libraries(example PRIVATE ftz::ftz simd::simd)
-simd_target_profile(example AVX2)
+target_link_libraries(example PRIVATE ftz::ftz native::native)
+native_target_profile(example AVX2)
 ```
 
 `ftz::ftz` supplies the `ftz` and `ftz.controls` modules and static archive. It
-depends on SIMD's common/minimal modules and headers. Numerical consumers link
-`simd::simd` and import `simd`; ISA values select vector families within
-that hub. The compatibility targets `simd::avx2`, `simd::avx512` and `simd::neon`
+depends on the native modules and headers; its arithmetic imports `native.math`. Numerical consumers link
+`native::native` and import `native`; ISA values select vector families within
+that hub. The compatibility targets `native::avx2`, `native::avx512` and `native::neon`
 refer to the same hub, not separate profile archives.
 
 FTZ's numerical helpers still use the consuming translation unit's native ISA
-settings. Keep `simd_target_profile` on those consumers and admit the selected
+settings. Keep `native_target_profile` on those consumers and admit the selected
 ISA before entry. Importing the hub does not perform admission or configure the
-thread's FP controls. Controls-only consumers inherit the configured SIMD
+thread's FP controls. Controls-only consumers inherit the configured native
 package minimum without an additional numerical profile. That minimum defaults
-to AVX2/FMA/BMI2 on x86 and the platform NEON baseline on ARM64; the dependency
-build can configure it through `SIMD_MINIMAL_COMPILE_OPTIONS`. Applications must
+to the toolchain baseline; the dependency build can configure it through `NATIVE_MINIMAL_COMPILE_OPTIONS`. Applications must
 admit that minimum too. Include both installed package prefixes in
 `CMAKE_PREFIX_PATH`.
 
@@ -135,7 +134,7 @@ a documentation-only build:
 
 ```sh
 cmake -S . -B build/docs -G Ninja -DFTZ_BUILD_HOST=OFF -DFTZ_BUILD_DOCS=ON \
-  -DCMAKE_PREFIX_PATH=/path/to/simd
+  -DCMAKE_PREFIX_PATH=/path/to/native
 cmake --build build/docs --target ftz_docs
 ```
 

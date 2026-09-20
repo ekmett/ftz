@@ -3,7 +3,7 @@
 I want an arithmetic policy to say what each operation means, including the
 awkward cases at zero and the normal/subnormal boundary. I keep that policy in
 the element type. I leave register width and instruction selection to
-[SIMD](https://github.com/ekmett/simd).
+[native](https://github.com/ekmett/simd).
 
 ## Policies and representation
 
@@ -13,7 +13,7 @@ the element type. I leave register width and instruction selection to
 | `ftz::h32` | Admitted hardware flushing, with required boundary repairs | Flush |
 
 Both types are four bytes and trivially copyable. Both are available from the
-same `ftz` module and archive. `simd::vec<F,N,Arch>` and `simd::wide<V,M>` retain
+same `ftz` module and archive. `native::simd<F,N,Arch>` and `native::wide<V,M>` retain
 the selected element policy; there is no per-operation policy dispatch.
 
 ## Values, conversions and math
@@ -48,7 +48,7 @@ conversion to `float` leaves this contract.
 Scalar and vector overloads provide `isnan`, `isinf`, `isfinite`, `signbit` and
 `copysign`. Vector classifications return `V::mask`, with the selected backend's
 native mask representation; `copysign` transports the magnitude and sign bits
-without changing a NaN payload. Generic `simd::wide` forwarding retains that
+without changing a NaN payload. Generic `native::wide` forwarding retains that
 mask type for each register, or `bool` when the element is scalar.
 
 The common scalar/vector/wide math surface includes `abs`, `sqrt`, `sin`, `cos`,

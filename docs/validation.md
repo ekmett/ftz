@@ -347,3 +347,26 @@ explicitly linked its selected profile archives rather than relying on an
 omnibus through FTZ. Requalification again passed 38/38 native tests, the
 relocated PCH/IPO package test (1/1), all API consumers (4/4), and the six guard
 compiler controls, using the same local toolchain and SIMD runtime checkpoint.
+
+
+## Native module cutover (2026-09-20)
+
+The native cutover was rebuilt on Windows x64 with Clang 23.1.1, CMake 4.4.3,
+Ninja and exceptions enabled, against native
+`1265645722d8bc7c7dab32d6ba43df5d362115aa`. The full FTZ build and all 39 CTests
+passed with AVX2 and AVX512 enabled. This includes the exact profile baseline,
+array exp, both FTZ policies, short-vector alignment and swizzles, controls and
+admission, scaling modes, and the log, tanh, atan2, trig and rounding fixtures.
+The rebuild includes the final shared `native.isa` module graph.
+
+FTZ now finds the `native` CMake package, links `native::native`, imports
+`native.scalar` and `native.math`, and spells vector types
+`native::simd<T,N,Arch>`. Custom-element traits and customization stay under
+`native`; the FTZ value and arithmetic namespaces are unchanged. The native
+package retains the toolchain baseline by default. Numerical fixtures explicitly
+select their vector profile; the AVX2 dispatcher requires AVX2/FMA and OS vector
+state, without an unrelated BMI2 requirement.
+
+This is local Windows execution evidence. ARM execution, shader builds and
+hosted CI for this checkpoint were not part of this run. Earlier receipts above
+retain their original package names and dependency pins.

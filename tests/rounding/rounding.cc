@@ -68,28 +68,28 @@ template<direction Mode,class F>void scalar(std::vector<std::uint32_t> const & w
     F x=F::from_bits(word);check(x.to_bits()==canonical(word));
     compare(apply<Mode>(x).to_bits(),canonical(word),Mode);
     std::array<F,3> values{x,x,x};auto a=apply<Mode>(values);
-    auto w=apply<Mode>(simd::wide<F,3>{values});
+    auto w=apply<Mode>(::native::wide<F,3>{values});
     for(std::size_t i=0;i<3;++i){compare(a[i].to_bits(),x.to_bits(),Mode);compare(w.registers[i].to_bits(),x.to_bits(),Mode);}
   }
   static_assert(std::same_as<decltype(apply<Mode>(std::array<F,0>{})),std::array<F,0>>);
   check(apply<Mode>(std::array<F,0>{}).empty());
-  static_assert(std::same_as<decltype(apply<Mode>(simd::wide<F,0>{})),simd::wide<F,0>>);
-  (void)apply<Mode>(simd::wide<F,0>{});
+  static_assert(std::same_as<decltype(apply<Mode>(::native::wide<F,0>{})),::native::wide<F,0>>);
+  (void)apply<Mode>(::native::wide<F,0>{});
 }
 template<direction Mode,class F,std::size_t N>void vectors(std::vector<std::uint32_t> const & words) {
-  using V=simd::vec<F,N,arch>;
+  using V=::native::simd<F,N,arch>;
   static_assert(std::same_as<decltype(apply<Mode>(V{})),V>);
   static_assert(noexcept(floor(V{})) && noexcept(ceil(V{})) && noexcept(trunc(V{})));
   for(std::size_t offset=0;offset<words.size();offset+=N) {
     std::array<F,N> values{};
     for(std::size_t j=0;j<N;++j)values[j]=F::from_bits(words[(offset+j)%words.size()]);
-    auto x=simd::load_simd<V>(values.data());
-    auto verify=[&](V result){std::array<F,N> out{};simd::store_simd(out.data(),result);for(std::size_t j=0;j<N;++j)compare(out[j].to_bits(),values[j].to_bits(),Mode);};
+    auto x=::native::load_simd<V>(values.data());
+    auto verify=[&](V result){std::array<F,N> out{};::native::store_simd(out.data(),result);for(std::size_t j=0;j<N;++j)compare(out[j].to_bits(),values[j].to_bits(),Mode);};
     verify(apply<Mode>(x));
     std::array<V,3> a{x,x,x};for(auto value:apply<Mode>(a))verify(value);
-    auto w=apply<Mode>(simd::wide<V,3>{a});for(auto value:w.registers)verify(value);
+    auto w=apply<Mode>(::native::wide<V,3>{a});for(auto value:w.registers)verify(value);
   }
-  (void)apply<Mode>(std::array<V,0>{});(void)apply<Mode>(simd::wide<V,0>{});
+  (void)apply<Mode>(std::array<V,0>{});(void)apply<Mode>(::native::wide<V,0>{});
 }
 template<direction Mode,class F>void operation(std::vector<std::uint32_t> const & words) {
   scalar<Mode,F>(words);vectors<Mode,F,1>(words);vectors<Mode,F,2>(words);vectors<Mode,F,3>(words);vectors<Mode,F,4>(words);

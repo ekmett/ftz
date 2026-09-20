@@ -17,7 +17,7 @@ the execution host:
 ```sh
 cmake -S tests/policy_boundary -B build/policy -G Ninja \
   -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release \
-  -Dftz_DIR=/prefix/lib/cmake/ftz -Dsimd_DIR=/prefix/lib/cmake/simd \
+  -Dftz_DIR=/prefix/lib/cmake/ftz -Dnative_DIR=/prefix/lib/cmake/native \
   '-DREVIEW_PROFILES=AVX2;AVX512'
 cmake --build build/policy --parallel 2
 ctest --test-dir build/policy --output-on-failure

@@ -1,14 +1,14 @@
 module;
-#include <simd/attributes.h>
+#include <native/attributes.h>
 #include <array>
 #include <bit>
 #include <cstdint>
 export module package;
 export import ftz;
-import simd;
+import native;
 export namespace package {
-  using vector = simd::vec<ftz::ftz32,4,simd::@profile@>;
-  simd_inline void fused(float const * input, float * output) {
+  using vector = ::native::simd<ftz::ftz32,4,::native::@profile@>;
+  native_inline void fused(float const * input, float * output) {
     auto x = vector::load(input);
     fma(x, vector(2.f), vector(1.f)).store(output);
   }

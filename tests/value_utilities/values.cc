@@ -4,8 +4,8 @@
 #include <cstdlib>
 #include "../core_regression/support/imports.h"
 template<class A,class B> concept can_copy_sign=requires(A a,B b){copysign(a,b);};
-using manual=simd::vec<ftz::m32,4,FTZ_TEST_ARCH>;
-using hardware=simd::vec<ftz::h32,4,FTZ_TEST_ARCH>;
+using manual=::native::simd<ftz::m32,4,FTZ_TEST_ARCH>;
+using hardware=::native::simd<ftz::h32,4,FTZ_TEST_ARCH>;
 static_assert(!can_copy_sign<manual,hardware> && !can_copy_sign<hardware,manual>);
 namespace {
   unsigned checks=0;
@@ -17,7 +17,7 @@ namespace {
   template<class V> void mask(typename V::mask value,std::array<bool,V::lanes> const & expected) {
     if constexpr(std::same_as<typename V::mask,bool>)check(value==expected[0]);
     else {
-      auto bits=simd::mask_bits<std::uint32_t>(value);
+      auto bits=::native::mask_bits<std::uint32_t>(value);
       std::array<std::uint32_t,V::lanes> output;bits.store(output.data());
       bool some=false,every=true;
       for(std::size_t i=0;i<V::lanes;++i){check(output[i]==(expected[i]?0xffffffffu:0u));some|=expected[i];every&=expected[i];}
@@ -25,8 +25,8 @@ namespace {
     }
   }
   template<class F,std::size_t N> void vectors() {
-    using V=simd::vec<F,N,FTZ_TEST_ARCH>;
-    using Raw=simd::vec<float,N,FTZ_TEST_ARCH>;
+    using V=::native::simd<F,N,FTZ_TEST_ARCH>;
+    using Raw=::native::simd<float,N,FTZ_TEST_ARCH>;
     static_assert(sizeof(V)==sizeof(Raw) && alignof(V)==alignof(Raw));
     static_assert(std::is_trivially_copyable_v<V>);
     static_assert(std::same_as<decltype(isnan(V{})),typename V::mask>);
@@ -43,13 +43,13 @@ namespace {
         nan[i]=magnitude>0x7f800000u;inf[i]=magnitude==0x7f800000u;
         finite[i]=magnitude<0x7f800000u;sign[i]=(word&0x80000000u)!=0;
       }
-      V value=simd::load_simd<V>(source.data());
+      V value=::native::load_simd<V>(source.data());
       mask<V>(isnan(value),nan);mask<V>(isinf(value),inf);
       mask<V>(isfinite(value),finite);mask<V>(signbit(value),sign);
       for(auto sign_word:words) {
         auto sign_value=F::from_bits(sign_word);
         V result=copysign(value,V(sign_value));
-        std::array<F,N> output;simd::store_simd(output.data(),result);
+        std::array<F,N> output;::native::store_simd(output.data(),result);
         for(std::size_t i=0;i<N;++i)
           check(output[i].to_bits()==((source[i].to_bits()&0x7fffffffu)|(sign_word&0x80000000u)));
       }

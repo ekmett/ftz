@@ -4,16 +4,16 @@
 #include "../core_regression/support/imports.h"
 namespace {
   template<class F> void native8(float * out,float const * in) {
-    using V=simd::vec<F,8,FTZ_TEST_ARCH>;
-    using R=simd::vec<float,8,FTZ_TEST_ARCH>;
+    using V=::native::simd<F,8,FTZ_TEST_ARCH>;
+    using R=::native::simd<float,8,FTZ_TEST_ARCH>;
     ftz::tanh(V::unsafe_from_float32(R::load(in))).to_native().store(out);
   }
   template<class F,std::size_t L,std::size_t N> void batch(float * out,float const * in) {
-    using V=simd::vec<F,L,FTZ_TEST_ARCH>;
-    using R=simd::vec<float,L,FTZ_TEST_ARCH>;
+    using V=::native::simd<F,L,FTZ_TEST_ARCH>;
+    using R=::native::simd<float,L,FTZ_TEST_ARCH>;
     std::array<V,N> input{};
     for(std::size_t j=0;j<N;++j) input[j]=V::unsafe_from_float32(R::load(in+L*j));
-    auto result=tanh(simd::wide<V,N>{input});
+    auto result=tanh(::native::wide<V,N>{input});
     for(std::size_t j=0;j<N;++j) result.registers[j].to_native().store(out+L*j);
   }
   template<class F> void scalar8(float * out,float const * in) {

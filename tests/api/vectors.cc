@@ -5,27 +5,27 @@
 #include <type_traits>
 #include <utility>
 import ftz;
-import simd;
+import native;
 #if API_PROFILE == 512
-constexpr auto arch=simd::avx512;
+constexpr auto arch=::native::avx512;
 #elif API_PROFILE == 128
-constexpr auto arch=simd::neon;
+constexpr auto arch=::native::neon;
 #else
-constexpr auto arch=simd::avx2;
+constexpr auto arch=::native::avx2;
 #endif
-import simd.wide;
+import native.wide;
 
 template<class F> bool vector_example() {
   //! [vector_memory]
-  using V = simd::vec<F,4,arch>;
+  using V = ::native::simd<F,4,arch>;
   std::array<F,4> input{F(1.f),F(2.f),F(3.f),F(4.f)};
-  auto value = simd::load_simd<V>(input.data());
+  auto value = ::native::load_simd<V>(input.data());
   auto snapshot = value.zyx;               // Owning vec<F,3,arch>.
   value.xy = value.yx;                      // Materialize before overlapping writes.
   std::array<F,4> output{};
-  simd::store_simd(output.data(), value);    // Exactly four typed elements.
+  ::native::store_simd(output.data(), value);    // Exactly four typed elements.
   //! [vector_memory]
-  static_assert(std::is_same_v<decltype(snapshot),simd::vec<F,3,arch>>);
+  static_assert(std::is_same_v<decltype(snapshot),::native::simd<F,3,arch>>);
   if (output!=std::array<F,4>{F(2.f),F(1.f),F(3.f),F(4.f)}) return false;
   //! [vector_masks]
   auto finite = isfinite(value);            // V::mask, not a float vector.
@@ -43,14 +43,14 @@ template<class F> bool vector_example() {
   //! [array_math]
   if (!all(isfinite(exponential[0])) || !all(isfinite(fused_registers[1]))) return false;
   //! [wide_math]
-  simd::wide<V,2> values{registers};
+  ::native::wide<V,2> values{registers};
   auto result = expm1(values);               // ADL uses FTZ's array kernel.
   auto [sine,cosine] = sincos(values);       // A pair of wide values.
   auto masks = isfinite(result);            // One native mask per register.
   auto angles = atan2(values,values);        // Matching wide operands.
   auto integers = floor(values);
-  static_assert(std::is_same_v<decltype(masks),simd::wide<typename V::mask,2>>);
-  static_assert(std::is_same_v<decltype(sine),simd::wide<V,2>>);
+  static_assert(std::is_same_v<decltype(masks),::native::wide<typename V::mask,2>>);
+  static_assert(std::is_same_v<decltype(sine),::native::wide<V,2>>);
   //! [wide_math]
   if (!all(masks.registers[0]) || !all(isfinite(angles.registers[1])) ||
       !all(integers.registers[0]==V(F(0.f)))) return false;

@@ -12,7 +12,7 @@ Configure with the same LLVM 23/C++26 toolchain as the installed packages:
 ```sh
 cmake -S tests/api -B build/api -G Ninja \
   -Dftz_DIR="/path/to/ftz/lib/cmake/ftz" \
-  -Dsimd_DIR="/path/to/simd/lib/cmake/simd" \
+  -Dnative_DIR="/path/to/native/lib/cmake/native" \
   -DAPI_PROFILES=AVX2
 cmake --build build/api --parallel 2
 ctest --test-dir build/api --output-on-failure

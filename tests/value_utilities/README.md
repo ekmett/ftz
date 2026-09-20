@@ -16,7 +16,7 @@ Both m32 control modes and the admitted h32 mode are tested.
 ```sh
 cmake -S tests/value_utilities -B build/values -G Ninja \
   -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release \
-  -Dftz_DIR=/prefix/lib/cmake/ftz -Dsimd_DIR=/prefix/lib/cmake/simd \
+  -Dftz_DIR=/prefix/lib/cmake/ftz -Dnative_DIR=/prefix/lib/cmake/native \
   '-DVALUE_PROFILES=AVX2;AVX512'
 cmake --build build/values --parallel 2
 ctest --test-dir build/values --output-on-failure
@@ -26,7 +26,7 @@ Choose only admitted CPU profiles; Apple uses NEON and its supported Clang
 driver. `codegen.cc` exposes the four classifiers and sign transport for ordinary
 strict codegen inspection. No arithmetic graph or scalar policy is changed.
 
-`wide.cc` consumes the generic `simd.wide` classification and homogeneous
+`wide.cc` consumes the generic `native.wide` classification and homogeneous
 `copysign` lifts. It checks scalar bool and actual native mask result types,
 empty/single/three-register packs, both FTZ types, exact zero/NaN sign and payload
 transport, and unchanged FP status. Short two/three-lane owning swizzles and

@@ -11,28 +11,28 @@ constexpr std::size_t lanes=8;
 constexpr std::size_t lanes=4;
 #endif
 extern "C" void m32_floor(ftz::m32 const * input,ftz::m32 * output) {
-  using V=simd::vec<ftz::m32,lanes,arch>;
-  simd::store_simd(output,floor(simd::load_simd<V>(input)));
+  using V=::native::simd<ftz::m32,lanes,arch>;
+  ::native::store_simd(output,floor(::native::load_simd<V>(input)));
 }
 extern "C" void m32_ceil(ftz::m32 const * input,ftz::m32 * output) {
-  using V=simd::vec<ftz::m32,lanes,arch>;
-  simd::store_simd(output,ceil(simd::load_simd<V>(input)));
+  using V=::native::simd<ftz::m32,lanes,arch>;
+  ::native::store_simd(output,ceil(::native::load_simd<V>(input)));
 }
 extern "C" void m32_trunc(ftz::m32 const * input,ftz::m32 * output) {
-  using V=simd::vec<ftz::m32,lanes,arch>;
-  simd::store_simd(output,trunc(simd::load_simd<V>(input)));
+  using V=::native::simd<ftz::m32,lanes,arch>;
+  ::native::store_simd(output,trunc(::native::load_simd<V>(input)));
 }
 extern "C" void h32_floor(ftz::h32 const * input,ftz::h32 * output) {
-  using V=simd::vec<ftz::h32,lanes,arch>;
-  simd::store_simd(output,floor(simd::load_simd<V>(input)));
+  using V=::native::simd<ftz::h32,lanes,arch>;
+  ::native::store_simd(output,floor(::native::load_simd<V>(input)));
 }
 extern "C" void h32_ceil(ftz::h32 const * input,ftz::h32 * output) {
-  using V=simd::vec<ftz::h32,lanes,arch>;
-  simd::store_simd(output,ceil(simd::load_simd<V>(input)));
+  using V=::native::simd<ftz::h32,lanes,arch>;
+  ::native::store_simd(output,ceil(::native::load_simd<V>(input)));
 }
 extern "C" void h32_trunc(ftz::h32 const * input,ftz::h32 * output) {
-  using V=simd::vec<ftz::h32,lanes,arch>;
-  simd::store_simd(output,trunc(simd::load_simd<V>(input)));
+  using V=::native::simd<ftz::h32,lanes,arch>;
+  ::native::store_simd(output,trunc(::native::load_simd<V>(input)));
 }
 extern "C" float m32_scalar_floor(float input) {
   return ftz::floor(ftz::m32::unsafe_from_float32(input)).to_float();

@@ -28,5 +28,5 @@ and shape regression evidence, without an FP-status equality or accuracy claim.
 
 Targets are `ftz_test_array_exp_<profile>` and CTests `ftz.array_exp.<profile>` for
 each configured AVX2, AVX512 or NEON profile. Rebuild against the matching
-[SIMD update](https://github.com/ekmett/simd/commit/b309bbc9656970e7ea00dc91ce4de9e418c1b8a7), which uses standard arrays for the
-shared exp graph and retains the legacy `simd::wide` adapter.
+[native update](https://github.com/ekmett/simd/commit/1265645722d8bc7c7dab32d6ba43df5d362115aa), which uses standard arrays for the
+shared exp graph and retains the legacy `native::wide` adapter.

@@ -6,7 +6,7 @@ FTZ functions, wide96 exp/expm1/sincos, native arithmetic and masks, raw exp,
 integer transforms, masked scaling, guarded-page tails and null empty inputs.
 NaNs are normalized only in numerical columns; every integer bit stays exact.
 
-Each backend consumer imports the same `ftz` and `simd` modules, with its
+Each backend consumer imports the same `ftz` and `native` modules, with its
 native profile selected by the ISA value and compile settings.
 The former header/import duplicate is replaced by one actual import
 consumer per ISA. The x86 entry uses the configured SIMD minimum and performs
