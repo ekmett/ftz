@@ -170,6 +170,9 @@ namespace ftz::detail {
  */
 export namespace native {
   /// \ingroup ftz_vectors
+  /// \brief Comparisons of either FTZ scalar policy produce a scalar truth value.
+  template <bool Hardware> struct mask_traits<::ftz::basic_ftz32<Hardware>> { using type = bool; };
+  /// \ingroup ftz_vectors
   /// \brief Stores either FTZ scalar policy in the architecture's raw float register.
   template <bool Hardware> struct simd_traits<::ftz::basic_ftz32<Hardware>> { using storage_type = float; };
   /// \ingroup ftz_vectors

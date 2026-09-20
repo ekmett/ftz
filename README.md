@@ -51,9 +51,12 @@ cover conversions, scopes, memory, masks, swizzles, arrays and shaders.
 
 Use `std::array<R,N>` for homogeneous exponential batches. FTZ's `exp(values)`
 overload keeps the array shape and its `m32`/`h32` element policy, including empty
-arrays. The matching [native update](https://github.com/ekmett/simd/commit/1265645722d8bc7c7dab32d6ba43df5d362115aa) shares one
+arrays. The matching [native update](https://github.com/ekmett/simd/commit/e145f0bc1e5de5b3eefa8efea694d40b62193b39) shares one
 polynomial across scalar, native SIMD and array exp through the existing FTZ
 adapter. Rebuild FTZ against that native package; tuples are not exp inputs.
+
+`native::mask<T>` maps either FTZ scalar policy to `bool`, FTZ vectors to their
+native comparison masks, and standard arrays recursively to arrays of masks.
 
 ## The boundaries matter
 

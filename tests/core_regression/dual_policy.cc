@@ -15,6 +15,20 @@
 namespace {
   using M=ftz::m32;using H=ftz::h32;
   template<class F,std::size_t N> using V=::native::simd<F,N,FTZ_TEST_ARCH>;
+  template<class F> consteval bool mask_shapes() {
+    using vector = V<F,4>;
+    using vector_mask = typename vector::mask_type;
+    static_assert(std::same_as<::native::mask<F>,bool>);
+    static_assert(std::same_as<::native::mask<F const &>,bool>);
+    static_assert(std::same_as<::native::mask<std::array<F,3> const &>,std::array<bool,3>>);
+    static_assert(std::same_as<::native::mask<vector>,vector_mask>);
+    static_assert(std::same_as<::native::mask<vector const &>,vector_mask>);
+    static_assert(std::same_as<::native::mask<std::array<vector,3>>,std::array<vector_mask,3>>);
+    static_assert(std::same_as<decltype(std::declval<F>() < std::declval<F>()),::native::mask<F>>);
+    static_assert(std::same_as<decltype(std::declval<vector>() < std::declval<vector>()),vector_mask>);
+    return true;
+  }
+  static_assert(mask_shapes<M>() && mask_shapes<H>());
   void require(bool x,char const * message) { if(!x){std::fprintf(stderr,"%s\n",message);std::abort();} }
   template<class A,class B> concept addable=requires(A a,B b){a+b;};
   template<class A,class B> concept subtractable=requires(A a,B b){a-b;};
