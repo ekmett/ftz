@@ -16,9 +16,9 @@ Both m32 control modes and the admitted h32 mode are tested.
 ```sh
 cmake -S tests/value_utilities -B build/values -G Ninja \
   -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release \
-  -Dftz_DIR=/prefix/lib/cmake/ftz -Dsimd_DIR=/prefix/lib/cmake/simd \
+  -Dftz_DIR=/prefix/lib/cmake/ftz -Dnative_DIR=/prefix/lib/cmake/native \
   '-DVALUE_PROFILES=AVX2;AVX512'
-cmake --build build/values --parallel 2
+cmake --build build/values --parallel
 ctest --test-dir build/values --output-on-failure
 ```
 

@@ -17,9 +17,9 @@ normalization obligation to its caller; the kernel does not repeat it.
 ```sh
 cmake -S tests/log -B build/log -G Ninja \
   -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release \
-  -Dftz_DIR=/prefix/lib/cmake/ftz -Dsimd_DIR=/prefix/lib/cmake/simd \
+  -Dftz_DIR=/prefix/lib/cmake/ftz -Dnative_DIR=/prefix/lib/cmake/native \
   '-DLOG_PROFILES=AVX2;AVX512'
-cmake --build build/log --parallel 2
+cmake --build build/log --parallel
 ctest --test-dir build/log --output-on-failure
 python tests/log/verify_bounds.py
 ```

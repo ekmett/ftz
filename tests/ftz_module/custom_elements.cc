@@ -5,8 +5,9 @@
 #include <type_traits>
 #include <utility>
 import ftz;
-import simd.scalar;
-import simd;
+import native.scalar;
+import native;
+import native.math;
 
 namespace fixture {
   // A separate test-only value domain. It has no implicit float conversion and
@@ -14,7 +15,7 @@ namespace fixture {
   struct second_scalar { float value = 0.f; };
 }
 
-namespace simd {
+namespace native {
   template <> struct simd_traits<fixture::second_scalar> { using storage_type = float; };
   template <class Raw, class Self>
   struct simd_customization<fixture::second_scalar,Raw,Self> {
@@ -34,10 +35,10 @@ namespace simd {
   };
 }
 
-template <simd::isa Arch,std::size_t N> constexpr bool independent_elements() {
-  using R = simd::vec<float,N,Arch>;
-  using F = simd::vec<ftz::ftz32,N,Arch>;
-  using S = simd::vec<fixture::second_scalar,N,Arch>;
+template <native::isa<> Arch,std::size_t N> constexpr bool independent_elements() {
+  using R = ::native::simd<float,N,Arch>;
+  using F = ::native::simd<ftz::ftz32,N,Arch>;
+  using S = ::native::simd<fixture::second_scalar,N,Arch>;
   static_assert(std::same_as<typename F::value_type,ftz::ftz32>);
   static_assert(std::same_as<typename S::value_type,fixture::second_scalar>);
   static_assert(std::same_as<typename F::register_type,R>);
@@ -50,25 +51,25 @@ template <simd::isa Arch,std::size_t N> constexpr bool independent_elements() {
   static_assert(std::same_as<decltype(std::declval<S>()<std::declval<S>()),typename R::mask>);
   static_assert(sizeof(S)==sizeof(R) && sizeof(F)==sizeof(R));
   if constexpr (N==1)
-    static_assert(std::same_as<decltype(simd::vec<fixture::second_scalar,1,Arch>{fixture::second_scalar{}}),
-      simd::vec<fixture::second_scalar,1,Arch>>);
+    static_assert(std::same_as<decltype(::native::simd<fixture::second_scalar,1,Arch>{fixture::second_scalar{}}),
+      ::native::simd<fixture::second_scalar,1,Arch>>);
   else
     static_assert(std::constructible_from<S,fixture::second_scalar>);
   return true;
 }
-static_assert(independent_elements<simd::scalar,1>());
-static_assert(independent_elements<simd::avx2,4>());
-static_assert(independent_elements<simd::avx512,4>());
-static_assert(!std::same_as<simd::vec<fixture::second_scalar,4,simd::avx2>,
-  simd::vec<fixture::second_scalar,4,simd::avx512>>);
+static_assert(independent_elements<::native::scalar,1>());
+static_assert(independent_elements<native::avx2,4>());
+static_assert(independent_elements<native::avx512,4>());
+static_assert(!std::same_as<::native::simd<fixture::second_scalar,4,native::avx2>,
+  ::native::simd<fixture::second_scalar,4,native::avx512>>);
 
-template<simd::isa Arch,std::size_t N>
+template<native::isa<> Arch,std::size_t N>
 auto add_second() {
-  using S = simd::vec<fixture::second_scalar,N,Arch>;
+  using S = ::native::simd<fixture::second_scalar,N,Arch>;
   return S(fixture::second_scalar{1.f}) + S(fixture::second_scalar{2.f});
 }
 // Instantiate the dependent constructor/operator bodies as well as declarations.
 // This OBJECT fixture is never linked into a baseline entry point.
-template auto add_second<simd::scalar,1>();
-template auto add_second<simd::avx2,4>();
-template auto add_second<simd::avx512,4>();
+template auto add_second<::native::scalar,1>();
+template auto add_second<native::avx2,4>();
+template auto add_second<native::avx512,4>();

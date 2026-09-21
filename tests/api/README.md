@@ -12,9 +12,9 @@ Configure with the same LLVM 23/C++26 toolchain as the installed packages:
 ```sh
 cmake -S tests/api -B build/api -G Ninja \
   -Dftz_DIR="/path/to/ftz/lib/cmake/ftz" \
-  -Dsimd_DIR="/path/to/simd/lib/cmake/simd" \
+  -Dnative_DIR="/path/to/simd/lib/cmake/native" \
   -DAPI_PROFILES=AVX2
-cmake --build build/api --parallel 2
+cmake --build build/api --parallel
 ctest --test-dir build/api --output-on-failure
 ```
 
@@ -32,3 +32,7 @@ requires separate device admission. Compiling an example does not establish it.
 Doxygen uses `EXAMPLE_PATH=tests/api` and the named snippet markers in these
 files. I use these as small API checks. The [validation record](../../docs/validation.md)
 keeps their scope separate from numerical and device qualification.
+
+`api.native_types` checks FTZ's scalar and vector mask traits, default one-lane
+architecture and rejection of foreign-family architecture tags through the
+installed module graph.

@@ -1,6 +1,6 @@
 #pragma once
 #include "ftz/config.h"
-#include "simd/attributes.h"
+#include "native/attributes.h"
 #ifdef __cplusplus
 #include <bit>
 #include <cmath>
@@ -18,14 +18,14 @@
 #endif
 
 namespace ftz { namespace detail { namespace math {
-  simd_nodiscard simd_inline simd_const float fp32_decode(unsigned int bits) {
+  native_nodiscard native_inline native_const float fp32_decode(unsigned int bits) {
 #ifdef __cplusplus
     return std::bit_cast<float>(bits);
 #else
     return asfloat(bits);
 #endif
   }
-  simd_nodiscard simd_inline simd_const unsigned int fp32_encode(float value) {
+  native_nodiscard native_inline native_const unsigned int fp32_encode(float value) {
 #ifdef __cplusplus
     return std::bit_cast<unsigned int>(value);
 #else
@@ -41,7 +41,7 @@ namespace ftz { namespace detail { namespace math {
   // Flush=false is for graphs that already bound their intermediates, or
   // perform their own final repair. It must not add per-operation FTZ work.
   template <bool Flush = true, bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline float fp32_add(float a, float b) {
+  native_nodiscard native_inline float fp32_add(float a, float b) {
 #ifdef __cplusplus
     float result = a + b;
 #else
@@ -50,7 +50,7 @@ namespace ftz { namespace detail { namespace math {
     return Flush ? fp32_ftz<Hardware>(result) : result;
   }
   template <bool Flush = true, bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline float fp32_mul(float a, float b) {
+  native_nodiscard native_inline float fp32_mul(float a, float b) {
 #ifdef __cplusplus
     float result = a * b;
 #else
@@ -59,7 +59,7 @@ namespace ftz { namespace detail { namespace math {
     return Flush ? fp32_ftz<Hardware>(result) : result;
   }
   template <bool Flush = true, bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline float fp32_fma(float a, float b, float c) {
+  native_nodiscard native_inline float fp32_fma(float a, float b, float c) {
 #ifdef __cplusplus
     float result = std::fma(a, b, c);
 #else

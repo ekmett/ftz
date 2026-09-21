@@ -23,10 +23,10 @@ namespace {
     ++index;++checks;
   }
   template<class F,std::size_t N> void vectors() {
-    using V=simd::vec<F,N,FTZ_TEST_ARCH>;
+    using V=::native::simd<F,N,FTZ_TEST_ARCH>;
     static_assert(std::same_as<decltype(atan2(V{},V{})),V>);
     auto verify=[](V result,std::size_t offset,bool record) {
-      std::array<F,N> values;simd::store_simd(values.data(),result);
+      std::array<F,N> values;native::store_simd(values.data(),result);
       for(std::size_t j=0;j<N;++j) {
         check(values[j],offset+j);
         if constexpr(N==4)if(record && capture)packet.push_back(values[j].to_bits());
@@ -35,23 +35,23 @@ namespace {
     for(std::size_t i=0;i+2*N<=inputs.size();i+=2*N) {
       std::array<F,2*N> y,x;
       for(std::size_t j=0;j<2*N;++j){y[j]=value<F>(inputs[i+j].first);x[j]=value<F>(inputs[i+j].second);}
-      V a=simd::load_simd<V>(y.data()),b=simd::load_simd<V>(x.data());
-      V c=simd::load_simd<V>(y.data()+N),d=simd::load_simd<V>(x.data()+N);
+      V a=native::load_simd<V>(y.data()),b=native::load_simd<V>(x.data());
+      V c=native::load_simd<V>(y.data()+N),d=native::load_simd<V>(x.data()+N);
       verify(atan2(a,b),i,false);
       std::array ys{a,c},xs{b,d};auto result=atan2(ys,xs);
       for(std::size_t j=0;j<2;++j)verify(result[j],i+j*N,true);
-      simd::wide wy{a,c},wx{b,d};auto wr=atan2(wy,wx);
+      ::native::wide wy{a,c},wx{b,d};auto wr=atan2(wy,wx);
       for(std::size_t j=0;j<2;++j)verify(wr.registers[j],i+j*N,false);
     }
     std::array<V,0> empty;if(!atan2(empty,empty).empty())std::abort();
-    simd::wide<V,0> wide_empty;(void)atan2(wide_empty,wide_empty);
+    ::native::wide<V,0> wide_empty;(void)atan2(wide_empty,wide_empty);
   }
   template<class F> void run() {
     for(std::size_t i=0;i+2<=inputs.size();i+=2) {
       std::array y{value<F>(inputs[i].first),value<F>(inputs[i+1].first)};
       std::array x{value<F>(inputs[i].second),value<F>(inputs[i+1].second)};
       auto result=atan2(y,x);for(std::size_t j=0;j<2;++j)check(result[j],i+j);
-      simd::wide wy{y},wx{x};auto wr=atan2(wy,wx);
+      ::native::wide wy{y},wx{x};auto wr=atan2(wy,wx);
       for(std::size_t j=0;j<2;++j)check(wr.registers[j],i+j);
     }
     vectors<F,1>();vectors<F,2>();vectors<F,3>();vectors<F,4>();

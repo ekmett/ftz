@@ -8,8 +8,8 @@ using hardware_type=ftz::ftz32;
 using manual_type=ftz::m32;
 using hardware_type=ftz::h32;
 #endif
-using R=simd::vec<float,8,arch>;
-template<class T> using V=simd::vec<T,8,arch>;
+using R=::native::simd<float,8,arch>;
+template<class T> using V=::native::simd<T,8,arch>;
 template<class T> [[gnu::always_inline]] inline auto read(float const *p){
   return std::array{V<T>::unsafe_from_float32(R::loadu(p)),V<T>::unsafe_from_float32(R::loadu(p+8)),V<T>::unsafe_from_float32(R::loadu(p+16))};
 }

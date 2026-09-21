@@ -21,15 +21,15 @@ set(DOXYGEN_ENABLE_PREPROCESSING YES)
 set(DOXYGEN_MACRO_EXPANSION YES)
 set(DOXYGEN_EXPAND_ONLY_PREDEF YES)
 set(DOXYGEN_PREDEFINED
-  "__cplusplus=202600L" "SIMD_PROFILE=512" "SIMD_BACKEND:=avx512_backend" "SIMD_ARCH:=::simd::avx512"
-  "SIMD_BACKEND_NAMESPACE:=simd::detail::avx512_backend"
-  "SIMD_HAS_AVX2:=1" "SIMD_HAS_AVX512F:=1" "SIMD_HAS_AVX512DQ:=1"
-  "SIMD_HAS_AVX512BW:=1" "SIMD_HAS_AVX512VL:=1" "SIMD_HAS_ARM_NEON:=0"
-  "simd_inline:=inline" "simd_flatten:=" "simd_noinline:="
-  "simd_const:=" "simd_pure:=" "simd_nodiscard:=" "simd_lifetimebound:="
-  "simd_artificial:=" "simd_noescape:=" "simd_reinitializes:="
-  "simd_empty_bases:=" "simd_restrict:=" "simd_hidden:="
-  "simd_nonnull(x):=" "simd_null_terminated_string_arg(x):=")
+  "__cplusplus=202600L" "NATIVE_PROFILE=512" "NATIVE_BACKEND:=avx512_backend" "NATIVE_ARCH:=::native::avx512"
+  "NATIVE_BACKEND_NAMESPACE:=native::detail::avx512_backend"
+  "NATIVE_HAS_AVX2:=1" "NATIVE_HAS_AVX512F:=1" "NATIVE_HAS_AVX512DQ:=1"
+  "NATIVE_HAS_AVX512BW:=1" "NATIVE_HAS_AVX512VL:=1" "NATIVE_HAS_ARM_NEON:=0"
+  "native_inline:=inline" "native_flatten:=" "native_noinline:="
+  "native_const:=" "native_pure:=" "native_nodiscard:=" "native_lifetimebound:="
+  "native_artificial:=" "native_noescape:=" "native_reinitializes:="
+  "native_empty_bases:=" "native_restrict:=" "native_hidden:="
+  "native_nonnull(x):=" "native_null_terminated_string_arg(x):=")
 set(DOXYGEN_ALIASES "license=@code{.spdx}" "endlicense=@endcode"
   "CPUID=@c CPUID" "PAUSE=@c PAUSE" "MONITOR=@c MONITOR" "MWAIT=@c MWAIT"
   "UMONITOR=@c UMONITOR" "UMWAIT=@c UMWAIT")
@@ -92,7 +92,7 @@ set(DOXYGEN_PROJECT_NAME "ftz shaders")
 set(DOXYGEN_PROJECT_BRIEF "HLSL 2021 interface")
 set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "")
 set(DOXYGEN_PREDEFINED "__HLSL_VERSION=2021" "FTZ_FP32_HARDWARE_FTZ=0"
-  "FTZ_SHADER_INT64=1" "simd_inline:=inline" "simd_const:=" "simd_pure:=")
+  "FTZ_SHADER_INT64=1" "native_inline:=inline" "native_const:=" "native_pure:=")
 set(DOXYGEN_HTML_OUTPUT "html/shaders")
 set(DOXYGEN_XML_OUTPUT "xml-shaders")
 set(DOXYGEN_WARN_LOGFILE "${PROJECT_BINARY_DIR}/docs/shader-warnings.log")

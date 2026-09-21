@@ -19,7 +19,7 @@ jobs:
   native:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       SCCACHE_GHA_ENABLED: "true"
     strategy:
@@ -52,7 +52,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           repository: ekmett/simd
-          ref: 3617f667a7a908d957d910c226da7a3d453a05f6
+          ref: a8a98407844041fc0480da6a7e3ad635f2678e52
           path: build/deps/simd
           persist-credentials: false
       # Use the setup actions from the same pinned, qualified SIMD revision.
@@ -64,7 +64,7 @@ jobs:
         if: runner.os == 'macOS'
       - uses: ./build/deps/simd/.github/actions/setup/macos/build-tools
         if: runner.os == 'macOS'
-      # Windows setup copied from SIMD 8f69034; numerical dependency remains pinned above.
+      # Windows setup supplies the matching compiler and build tools.
       - uses: ./.github/actions/setup/windows
         if: runner.os == 'Windows'
       - name: Set up compiler cache
@@ -73,10 +73,18 @@ jobs:
         with:
           version: v0.16.0
       - name: Check compiler cache launcher
-        if: runner.os != 'Windows'
         run: |
-          python3 -B .github/scripts/test_sccache_launcher.py
-          python3 -B .github/scripts/test_sccache_pch.py "$(command -v clang++)" "$GITHUB_WORKSPACE/build/sccache-pch-probe"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            python -B .github/scripts/test_sccache_launcher.py
+          else
+            python3 -B .github/scripts/test_sccache_launcher.py
+          fi
+      - name: Check PCH cache inputs
+        if: runner.os != 'Windows'
+        run: python3 -B .github/scripts/test_sccache_pch.py "$(command -v clang++)" "$GITHUB_WORKSPACE/build/sccache-pch-probe"
+      - name: Check Windows module cache inputs
+        if: runner.os == 'Windows'
+        run: python -B .github/scripts/test_sccache_modules.py --compiler clang-cl --output build/sccache-modules --cmake-arg=-DCMAKE_LINKER_TYPE=LLD
       - name: Record Windows hardware and admit the test architecture
         if: runner.os == 'Windows'
         shell: pwsh
@@ -166,10 +174,10 @@ jobs:
       - name: Build and install SIMD
         run: |
           compiler=clang++
-          launcher=sccache
           extra=()
           if [[ "$RUNNER_OS" == Windows ]]; then
             compiler=clang-cl
+            launcher="python;$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
           else
             launcher="$(command -v python3);$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
           fi
@@ -178,11 +186,11 @@ jobs:
             -DCMAKE_CXX_COMPILER="$compiler" -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER="$launcher" \
             -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DSIMD_BUILD_TESTS=OFF -DSIMD_BUILD_DOCS=OFF \
-            -DSIMD_ENABLE_EXCEPTIONS=ON -DSIMD_ENABLE_PCH=ON -DSIMD_ENABLE_IPO=ON \
-            -DSIMD_PROFILES="${{ matrix.profile }}" "${extra[@]}" \
+            -DNATIVE_BUILD_TESTS=OFF -DNATIVE_BUILD_DOCS=OFF \
+            -DNATIVE_ENABLE_EXCEPTIONS=ON -DNATIVE_ENABLE_PCH=ON -DNATIVE_ENABLE_IPO=ON \
+            "${extra[@]}" \
             2>&1 | tee build/logs/simd-configure.log
-          cmake --build build/simd --parallel 2 2>&1 | tee build/logs/simd-build.log
+          cmake --build build/simd --parallel 2>&1 | tee build/logs/simd-build.log
           cmake --install build/simd --prefix "$GITHUB_WORKSPACE/build/install/simd" \
             2>&1 | tee build/logs/simd-install.log
       - name: Install optional accuracy oracle (Linux x64 only)
@@ -191,10 +199,10 @@ jobs:
       - name: Build and test FTZ
         run: |
           compiler=clang++
-          launcher=sccache
           extra=()
           if [[ "$RUNNER_OS" == Windows ]]; then
             compiler=clang-cl
+            launcher="python;$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
           else
             launcher="$(command -v python3);$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
           fi
@@ -203,14 +211,14 @@ jobs:
             -DCMAKE_CXX_COMPILER="$compiler" -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER="$launcher" \
             -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -Dsimd_DIR="$GITHUB_WORKSPACE/build/install/simd/lib/cmake/simd" \
+            -Dnative_DIR="$GITHUB_WORKSPACE/build/install/simd/lib/cmake/native" \
             -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
             -DFTZ_BUILD_TESTS=ON -DFTZ_BUILD_DOCS=OFF \
             -DFTZ_BUILD_MPFR_TESTS=${{ matrix.runner == 'ubuntu-24.04' }} \
             -DFTZ_ENABLE_EXCEPTIONS=ON -DFTZ_ENABLE_PCH=ON -DFTZ_ENABLE_IPO=ON \
             -DFTZ_TEST_ISA="${{ matrix.profile }}" -DFTZ_TEST_PROFILES="${{ matrix.profile }}" \
             "${extra[@]}" 2>&1 | tee build/logs/ftz-configure.log
-          cmake --build build/ftz --parallel 2 2>&1 | tee build/logs/ftz-build.log
+          cmake --build build/ftz --parallel 2>&1 | tee build/logs/ftz-build.log
           ctest --test-dir build/ftz --show-only=json-v1 > build/logs/ftz-tests.json
           ctest --test-dir build/ftz --no-tests=error --output-on-failure \
             --output-junit "$GITHUB_WORKSPACE/build/logs/ftz-tests.xml" \
@@ -238,11 +246,11 @@ jobs:
             cmake -S "tests/$suite" -B "build/$suite" -G Ninja \
               -DCMAKE_CXX_COMPILER="$compiler" -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-              -Dsimd_DIR="$GITHUB_WORKSPACE/build/relocated packages/simd/lib/cmake/simd" \
+              -Dnative_DIR="$GITHUB_WORKSPACE/build/relocated packages/simd/lib/cmake/native" \
               -Dftz_DIR="$GITHUB_WORKSPACE/build/relocated packages/ftz/lib/cmake/ftz" \
               -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
               "${extra[@]}" "${options[@]}" 2>&1 | tee "build/logs/$suite-configure.log"
-            cmake --build "build/$suite" --parallel 2 2>&1 | tee "build/logs/$suite-build.log"
+            cmake --build "build/$suite" --parallel 2>&1 | tee "build/logs/$suite-build.log"
             ctest --test-dir "build/$suite" --no-tests=error --output-on-failure \
               --output-junit "$GITHUB_WORKSPACE/build/logs/$suite-tests.xml" \
               2>&1 | tee "build/logs/$suite-test.log"

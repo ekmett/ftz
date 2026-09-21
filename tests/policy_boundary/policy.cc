@@ -3,8 +3,8 @@
 #include "imports.h"
 using M=ftz::m32;
 using H=ftz::h32;
-template<class T> using V=simd::vec<T,4,arch>;
-template<class T> using W=simd::wide<T,2>;
+template<class T> using V=::native::simd<T,4,arch>;
+template<class T> using W=::native::wide<T,2>;
 #define CHECKABLE(Name, Expression) template<class A,class B> concept Name=requires(A a,B b){Expression;}
 CHECKABLE(add,a+b); CHECKABLE(sub,a-b); CHECKABLE(mul,a*b); CHECKABLE(dividable,a/b);
 CHECKABLE(threeway,a<=>b); CHECKABLE(eq,a==b); CHECKABLE(ne,a!=b); CHECKABLE(lt,a<b); CHECKABLE(gt,a>b); CHECKABLE(le,a<=b); CHECKABLE(ge,a>=b);
@@ -36,8 +36,8 @@ template<class A,class B> concept masked_prior=requires(typename A::mask m,A a,B
 template<class A,class B> concept masked_value=requires(typename A::mask m,A a,B b){masked_scaleb(m,a,b,a);};
 template<class A,class B> concept masked_zero=requires(typename A::mask m,A a,B b){masked_scaleb_zero(m,a,b);};
 template<class A,class B> concept swizzle_assign=requires(A a,B b){a.xy=b.xy;};
-template<class A,class B> concept loaded=requires(B const * p){simd::load_simd<A>(p);};
-template<class A,class B> concept stored=requires(B * p,A a){simd::store_simd(p,a);};
+template<class A,class B> concept loaded=requires(B const * p){native::load_simd<A>(p);};
+template<class A,class B> concept stored=requires(B * p,A a){native::store_simd(p,a);};
 template<class A,class B> consteval bool mixed_vectors() {
   static_assert(!selected<A,B> && !masked_exponent<A,B> && !masked_prior<A,B> && !masked_value<A,B> && !masked_zero<A,B>);
   static_assert(!swizzle_assign<A,B>);

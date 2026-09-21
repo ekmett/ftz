@@ -1,13 +1,13 @@
 #pragma once
 #include "ftz/config.h"
-#include "simd/attributes.h"
+#include "native/attributes.h"
 #include "ftz/math/float.h"
 namespace ftz { namespace detail { namespace math {
   struct log_result { unsigned int bits, valid; };
   // Precondition: finite x in [-.5,1], zero or canonical normal. Tiny input
   // returns its original bits before squaring. Fixed x+x*x*P(x) graph; no divide.
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const float log1p_kernel(float x) {
+  native_nodiscard native_inline native_const float log1p_kernel(float x) {
     unsigned int word = fp32_encode(x);
     if ((word & 0x7fffffffu) <= 0x33000000u) return x;
     float z = fp32_mul<true,Hardware>(x,x);
@@ -49,7 +49,7 @@ namespace ftz { namespace detail { namespace math {
     return fp32_fma<true,Hardware>(z,h,x);
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const log_result log_words(unsigned int word) {
+  native_nodiscard native_inline native_const log_result log_words(unsigned int word) {
     unsigned int magnitude = word & 0x7fffffffu;
     log_result result;result.bits=0x7fc00000u;result.valid=0u;
     if (magnitude > 0x7f800000u) return result;
@@ -72,7 +72,7 @@ namespace ftz { namespace detail { namespace math {
     return result;
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const log_result log1p_words(unsigned int word) {
+  native_nodiscard native_inline native_const log_result log1p_words(unsigned int word) {
     unsigned int magnitude=word & 0x7fffffffu;
     bool negative=(word & 0x80000000u) != 0u;
     log_result result;result.bits=0x7fc00000u;result.valid=0u;
@@ -91,11 +91,11 @@ namespace ftz { namespace detail { namespace math {
     return log_words<Hardware>(fp32_encode(fp32_add<true,Hardware>(1.0f,x)));
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const float log(float value) {
+  native_nodiscard native_inline native_const float log(float value) {
     return fp32_decode(log_words<Hardware>(fp32_encode(value)).bits);
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const float log1p(float value) {
+  native_nodiscard native_inline native_const float log1p(float value) {
     return fp32_decode(log1p_words<Hardware>(fp32_encode(value)).bits);
   }
 }}}

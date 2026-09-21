@@ -12,9 +12,11 @@ target_include_directories(ftz PUBLIC
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/shared>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/cxx>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/shared>")
-target_link_libraries(ftz PUBLIC simd::common simd::headers)
+target_link_libraries(ftz PUBLIC native::native native::headers)
 if(FTZ_ENABLE_PCH)
-  target_precompile_headers(ftz PRIVATE <array> <bit> <cmath> <concepts> <cstdint> <type_traits> <utility> <simd/attributes.h>)
+  # MSVC <bit> selects different helper bodies under __AVX2__. Keep it in the
+  # module global fragment rather than freezing it into the baseline PCH.
+  target_precompile_headers(ftz PRIVATE <array> <cmath> <concepts> <cstdint> <type_traits> <utility> <native/attributes.h>)
 endif()
 file(GLOB_RECURSE ftz_cxx_headers CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cxx/ftz/*.h")
 target_sources(ftz PUBLIC

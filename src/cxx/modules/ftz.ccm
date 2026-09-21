@@ -1,5 +1,5 @@
 module;
-#include <simd/attributes.h>
+#include <native/attributes.h>
 #include <ftz/config.h>
 #include <algorithm>
 #include <array>
@@ -10,7 +10,8 @@ module;
 #include <cstring>
 #include <type_traits>
 #include <utility>
-import simd.scalar;
+import native.scalar;
+import native.math;
 #include <ftz/ftz32_ops.h>
 export module ftz;
 export import ftz.controls;
@@ -51,78 +52,78 @@ export namespace ftz {
    * Opposite-policy arithmetic is rejected; explicitly choose a policy at the boundary.
    */
   template <bool Hardware>
-  struct simd_nodiscard basic_ftz32 {
+  struct native_nodiscard basic_ftz32 {
     static constexpr bool hardware = Hardware;
     /// \brief Constructs positive zero.
-    constexpr simd_inline basic_ftz32() noexcept = default;
+    constexpr native_inline basic_ftz32() noexcept = default;
     /// \brief Imports a float, replacing subnormal magnitude with signed zero.
-    constexpr simd_inline basic_ftz32(float value) noexcept
+    constexpr native_inline basic_ftz32(float value) noexcept
       : bits_(detail::ftz32_canonical(std::bit_cast<unsigned int>(value))) {}
     /// \brief Exports unchanged bits as float; subsequent ordinary arithmetic is outside this contract.
-    simd_nodiscard constexpr simd_inline simd_pure operator float() const noexcept { return to_float(); }
+    native_nodiscard constexpr native_inline native_pure operator float() const noexcept { return to_float(); }
     /// \brief Imports and normalizes a float, as the converting constructor does.
-    simd_nodiscard static constexpr simd_inline simd_const basic_ftz32 from_float(float value) noexcept { return basic_ftz32(value); }
+    native_nodiscard static constexpr native_inline native_const basic_ftz32 from_float(float value) noexcept { return basic_ftz32(value); }
     // Caller guarantees normal/signed zero/infinity/any NaN input.
     /// \brief Wraps float bits without classification or normalization.
     /// \pre value is normal, signed zero, infinity or NaN; no subnormal is allowed.
-    simd_nodiscard static constexpr simd_inline simd_const basic_ftz32 unsafe_from_float32(float value) noexcept {
+    native_nodiscard static constexpr native_inline native_const basic_ftz32 unsafe_from_float32(float value) noexcept {
       return canonical(std::bit_cast<unsigned int>(value));
     }
     /// \brief Imports binary32 bits, flushing only subnormal magnitudes to signed zero.
-    simd_nodiscard static constexpr simd_inline simd_const basic_ftz32 from_bits(unsigned int bits) noexcept {
+    native_nodiscard static constexpr native_inline native_const basic_ftz32 from_bits(unsigned int bits) noexcept {
       return canonical(detail::ftz32_canonical(bits));
     }
     /// \brief Exports the stored binary32 representation as float without arithmetic.
-    simd_nodiscard constexpr simd_inline simd_pure float to_float() const noexcept { return std::bit_cast<float>(bits_); }
+    native_nodiscard constexpr native_inline native_pure float to_float() const noexcept { return std::bit_cast<float>(bits_); }
     /// \brief Exports the exact stored word, including zero sign and NaN payload.
-    simd_nodiscard constexpr simd_inline simd_pure unsigned int to_bits() const noexcept { return bits_; }
+    native_nodiscard constexpr native_inline native_pure unsigned int to_bits() const noexcept { return bits_; }
     /// \brief Applies the FTZ arithmetic/sign operation, preserving this policy and
     /// signed-zero semantics.
-    simd_nodiscard friend simd_inline simd_const basic_ftz32 operator+(basic_ftz32 a, basic_ftz32 b) noexcept {
+    native_nodiscard friend native_inline native_const basic_ftz32 operator+(basic_ftz32 a, basic_ftz32 b) noexcept {
       return canonical(detail::ftz32_add<Hardware>(a.bits_, b.bits_));
     }
     /// \brief Applies the FTZ arithmetic/sign operation, preserving this policy and
     /// signed-zero semantics.
-    simd_nodiscard friend simd_inline simd_const basic_ftz32 operator-(basic_ftz32 a, basic_ftz32 b) noexcept {
+    native_nodiscard friend native_inline native_const basic_ftz32 operator-(basic_ftz32 a, basic_ftz32 b) noexcept {
       return canonical(detail::ftz32_sub<Hardware>(a.bits_, b.bits_));
     }
     /// \brief Applies the FTZ arithmetic/sign operation, preserving this policy and
     /// signed-zero semantics.
-    simd_nodiscard friend simd_inline simd_const basic_ftz32 operator*(basic_ftz32 a, basic_ftz32 b) noexcept {
+    native_nodiscard friend native_inline native_const basic_ftz32 operator*(basic_ftz32 a, basic_ftz32 b) noexcept {
       return canonical(detail::ftz32_mul(a.bits_, b.bits_));
     }
     /// \brief Divides using the reproducible reciprocal-refinement graph, with signed
     /// IEEE-like zero/infinity cases.
-    simd_nodiscard friend simd_inline simd_const basic_ftz32 operator/(basic_ftz32 a, basic_ftz32 b) noexcept {
+    native_nodiscard friend native_inline native_const basic_ftz32 operator/(basic_ftz32 a, basic_ftz32 b) noexcept {
       return canonical(detail::ftz32_div<Hardware>(a.bits_, b.bits_));
     }
     /// \brief Flips only the sign bit, preserving signed zero and NaN payloads.
-    simd_nodiscard friend constexpr simd_inline simd_const basic_ftz32 operator-(basic_ftz32 a) noexcept { return canonical(detail::ftz32_neg(a.bits_)); }
+    native_nodiscard friend constexpr native_inline native_const basic_ftz32 operator-(basic_ftz32 a) noexcept { return canonical(detail::ftz32_neg(a.bits_)); }
     /// \brief Returns the value unchanged.
-    simd_nodiscard friend constexpr simd_inline simd_const basic_ftz32 operator+(basic_ftz32 a) noexcept { return a; }
+    native_nodiscard friend constexpr native_inline native_const basic_ftz32 operator+(basic_ftz32 a) noexcept { return a; }
     /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-    simd_nodiscard friend constexpr simd_inline simd_const bool operator==(basic_ftz32 a, basic_ftz32 b) noexcept { return detail::ftz32_equal(a.bits_, b.bits_); }
+    native_nodiscard friend constexpr native_inline native_const bool operator==(basic_ftz32 a, basic_ftz32 b) noexcept { return detail::ftz32_equal(a.bits_, b.bits_); }
     /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-    simd_nodiscard friend constexpr simd_inline simd_const bool operator!=(basic_ftz32 a, basic_ftz32 b) noexcept { return !(a == b); }
+    native_nodiscard friend constexpr native_inline native_const bool operator!=(basic_ftz32 a, basic_ftz32 b) noexcept { return !(a == b); }
     /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-    simd_nodiscard friend constexpr simd_inline simd_const bool operator<(basic_ftz32 a, basic_ftz32 b) noexcept { return detail::ftz32_less(a.bits_, b.bits_); }
+    native_nodiscard friend constexpr native_inline native_const bool operator<(basic_ftz32 a, basic_ftz32 b) noexcept { return detail::ftz32_less(a.bits_, b.bits_); }
     /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-    simd_nodiscard friend constexpr simd_inline simd_const bool operator>(basic_ftz32 a, basic_ftz32 b) noexcept { return b < a; }
+    native_nodiscard friend constexpr native_inline native_const bool operator>(basic_ftz32 a, basic_ftz32 b) noexcept { return b < a; }
     /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-    simd_nodiscard friend constexpr simd_inline simd_const bool operator<=(basic_ftz32 a, basic_ftz32 b) noexcept { return a < b || a == b; }
+    native_nodiscard friend constexpr native_inline native_const bool operator<=(basic_ftz32 a, basic_ftz32 b) noexcept { return a < b || a == b; }
     /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-    simd_nodiscard friend constexpr simd_inline simd_const bool operator>=(basic_ftz32 a, basic_ftz32 b) noexcept { return b <= a; }
+    native_nodiscard friend constexpr native_inline native_const bool operator>=(basic_ftz32 a, basic_ftz32 b) noexcept { return b <= a; }
     /// \brief Assigns the corresponding FTZ result and returns this value by reference.
-    simd_inline basic_ftz32 & operator+=(basic_ftz32 b) noexcept { return *this = *this + b; }
+    native_inline basic_ftz32 & operator+=(basic_ftz32 b) noexcept { return *this = *this + b; }
     /// \brief Assigns the corresponding FTZ result and returns this value by reference.
-    simd_inline basic_ftz32 & operator-=(basic_ftz32 b) noexcept { return *this = *this - b; }
+    native_inline basic_ftz32 & operator-=(basic_ftz32 b) noexcept { return *this = *this - b; }
     /// \brief Assigns the corresponding FTZ result and returns this value by reference.
-    simd_inline basic_ftz32 & operator*=(basic_ftz32 b) noexcept { return *this = *this * b; }
+    native_inline basic_ftz32 & operator*=(basic_ftz32 b) noexcept { return *this = *this * b; }
     /// \brief Assigns the corresponding FTZ result and returns this value by reference.
-    simd_inline basic_ftz32 & operator/=(basic_ftz32 b) noexcept { return *this = *this / b; }
+    native_inline basic_ftz32 & operator/=(basic_ftz32 b) noexcept { return *this = *this / b; }
   private:
     unsigned int bits_ = 0u;
-    simd_nodiscard static constexpr simd_inline simd_const basic_ftz32 canonical(unsigned int bits) noexcept {
+    native_nodiscard static constexpr native_inline native_const basic_ftz32 canonical(unsigned int bits) noexcept {
       basic_ftz32 result; result.bits_ = bits; return result;
     }
   };
@@ -220,53 +221,53 @@ export namespace ftz {
   /// \brief Accepts built-in arithmetic operands for conversion into a chosen FTZ policy.
   template <class T> concept ftz32_scalar = std::is_arithmetic_v<T>;
   /// \brief Applies the FTZ arithmetic/sign operation, preserving this policy and signed-zero semantics.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator+(basic_ftz32<Hardware> a, T b) noexcept { return a + basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const basic_ftz32<Hardware> operator+(basic_ftz32<Hardware> a, T b) noexcept { return a + basic_ftz32<Hardware>(static_cast<float>(b)); }
   /// \brief Applies the FTZ arithmetic/sign operation, preserving this policy and signed-zero semantics.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator+(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) + b; }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const basic_ftz32<Hardware> operator+(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) + b; }
   /// \brief Applies the FTZ arithmetic/sign operation, preserving this policy and signed-zero semantics.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator-(basic_ftz32<Hardware> a, T b) noexcept { return a - basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const basic_ftz32<Hardware> operator-(basic_ftz32<Hardware> a, T b) noexcept { return a - basic_ftz32<Hardware>(static_cast<float>(b)); }
   /// \brief Applies the FTZ arithmetic/sign operation, preserving this policy and signed-zero semantics.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator-(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) - b; }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const basic_ftz32<Hardware> operator-(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) - b; }
   /// \brief Applies the FTZ arithmetic/sign operation, preserving this policy and signed-zero semantics.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator*(basic_ftz32<Hardware> a, T b) noexcept { return a * basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const basic_ftz32<Hardware> operator*(basic_ftz32<Hardware> a, T b) noexcept { return a * basic_ftz32<Hardware>(static_cast<float>(b)); }
   /// \brief Applies the FTZ arithmetic/sign operation, preserving this policy and signed-zero semantics.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator*(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) * b; }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const basic_ftz32<Hardware> operator*(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) * b; }
   /// \brief Divides using the reproducible reciprocal-refinement graph, with signed IEEE-like
   /// zero/infinity cases.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator/(basic_ftz32<Hardware> a, T b) noexcept { return a / basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const basic_ftz32<Hardware> operator/(basic_ftz32<Hardware> a, T b) noexcept { return a / basic_ftz32<Hardware>(static_cast<float>(b)); }
   /// \brief Divides using the reproducible reciprocal-refinement graph, with signed IEEE-like
   /// zero/infinity cases.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> operator/(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) / b; }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const basic_ftz32<Hardware> operator/(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) / b; }
   /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator==(basic_ftz32<Hardware> a, T b) noexcept { return a == basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const bool operator==(basic_ftz32<Hardware> a, T b) noexcept { return a == basic_ftz32<Hardware>(static_cast<float>(b)); }
   /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator==(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) == b; }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const bool operator==(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) == b; }
   /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator!=(basic_ftz32<Hardware> a, T b) noexcept { return a != basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const bool operator!=(basic_ftz32<Hardware> a, T b) noexcept { return a != basic_ftz32<Hardware>(static_cast<float>(b)); }
   /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator!=(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) != b; }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const bool operator!=(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) != b; }
   /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator<(basic_ftz32<Hardware> a, T b) noexcept { return a < basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const bool operator<(basic_ftz32<Hardware> a, T b) noexcept { return a < basic_ftz32<Hardware>(static_cast<float>(b)); }
   /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator<(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) < b; }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const bool operator<(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) < b; }
   /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator>(basic_ftz32<Hardware> a, T b) noexcept { return a > basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const bool operator>(basic_ftz32<Hardware> a, T b) noexcept { return a > basic_ftz32<Hardware>(static_cast<float>(b)); }
   /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator>(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) > b; }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const bool operator>(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) > b; }
   /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator<=(basic_ftz32<Hardware> a, T b) noexcept { return a <= basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const bool operator<=(basic_ftz32<Hardware> a, T b) noexcept { return a <= basic_ftz32<Hardware>(static_cast<float>(b)); }
   /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator<=(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) <= b; }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const bool operator<=(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) <= b; }
   /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator>=(basic_ftz32<Hardware> a, T b) noexcept { return a >= basic_ftz32<Hardware>(static_cast<float>(b)); }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const bool operator>=(basic_ftz32<Hardware> a, T b) noexcept { return a >= basic_ftz32<Hardware>(static_cast<float>(b)); }
   /// \brief Compares values; NaN is unordered (only != is true), and the two zero signs compare equal.
-  template <bool Hardware, ftz32_scalar T> simd_nodiscard simd_inline simd_const bool operator>=(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) >= b; }
+  template <bool Hardware, ftz32_scalar T> native_nodiscard native_inline native_const bool operator>=(T a, basic_ftz32<Hardware> b) noexcept { return basic_ftz32<Hardware>(static_cast<float>(a)) >= b; }
 
   /// \ingroup ftz_math
   /// \brief Computes a*b+c with one fused rounding and the FTZ boundary repair.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> fma(basic_ftz32<Hardware> a, basic_ftz32<Hardware> b, basic_ftz32<Hardware> c) noexcept {
+  native_nodiscard native_inline native_const basic_ftz32<Hardware> fma(basic_ftz32<Hardware> a, basic_ftz32<Hardware> b, basic_ftz32<Hardware> c) noexcept {
     return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_fma(a.to_bits(), b.to_bits(), c.to_bits())));
   }
   /// \ingroup ftz_math
@@ -274,54 +275,54 @@ export namespace ftz {
   /// and infinity gives NaN.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> sin(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_sin<Hardware>(a.to_bits()))); }
+  native_nodiscard native_inline native_const basic_ftz32<Hardware> sin(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_sin<Hardware>(a.to_bits()))); }
   /// \ingroup ftz_math
   /// \brief Returns the reproducible cosine approximation in radians; either zero gives one and
   /// infinity gives NaN.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> cos(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_cos<Hardware>(a.to_bits()))); }
+  native_nodiscard native_inline native_const basic_ftz32<Hardware> cos(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_cos<Hardware>(a.to_bits()))); }
   /// \ingroup ftz_math
   /// \brief Returns the reproducible hyperbolic tangent; signed zero is preserved and
   /// infinities give signed one.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> tanh(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_tanh<Hardware>(a.to_bits()))); }
+  native_nodiscard native_inline native_const basic_ftz32<Hardware> tanh(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_tanh<Hardware>(a.to_bits()))); }
   /// \ingroup ftz_math
   /// \brief Returns the natural-log approximation; either zero gives negative infinity,
   /// negative nonzero values give NaN.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> log(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_log<Hardware>(a.to_bits()))); }
+  native_nodiscard native_inline native_const basic_ftz32<Hardware> log(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_log<Hardware>(a.to_bits()))); }
   /// \ingroup ftz_math
   /// \brief Approximates log(1+x); -1 gives negative infinity, x below -1 gives NaN, and signed
   /// zero is preserved.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> log1p(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_log1p<Hardware>(a.to_bits()))); }
+  native_nodiscard native_inline native_const basic_ftz32<Hardware> log1p(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_log1p<Hardware>(a.to_bits()))); }
   /// \ingroup ftz_math
   /// \brief Returns the reproducible exponential; negative infinity gives positive zero and
   /// positive infinity is preserved.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> exp(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_exp(a.to_bits()))); }
+  native_nodiscard native_inline native_const basic_ftz32<Hardware> exp(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_exp(a.to_bits()))); }
   /// \ingroup ftz_math
   /// \brief Approximates exp(x)-1 without subtracting one for tiny x; signed zero is preserved.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> expm1(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_expm1<Hardware>(a.to_bits()))); }
+  native_nodiscard native_inline native_const basic_ftz32<Hardware> expm1(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_expm1<Hardware>(a.to_bits()))); }
   /// \ingroup ftz_math
   /// \brief Returns the angle in radians for (y,x), retaining signed-axis and infinity
   /// quadrants; NaN inputs give NaN.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> atan2(basic_ftz32<Hardware> y, basic_ftz32<Hardware> x) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_atan2<Hardware>(y.to_bits(), x.to_bits()))); }
+  native_nodiscard native_inline native_const basic_ftz32<Hardware> atan2(basic_ftz32<Hardware> y, basic_ftz32<Hardware> x) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_atan2<Hardware>(y.to_bits(), x.to_bits()))); }
   /// \ingroup ftz_math
   /// \brief Returns sine followed by cosine, sharing reduction; C++ uses a pair and HLSL uses
   /// named fields.
   /// \returns std::pair<basic_ftz32<Hardware>,basic_ftz32<Hardware>>.
   template <bool Hardware>
-  simd_nodiscard simd_inline simd_const std::pair<basic_ftz32<Hardware>, basic_ftz32<Hardware>> sincos(basic_ftz32<Hardware> a) noexcept {
+  native_nodiscard native_inline native_const std::pair<basic_ftz32<Hardware>, basic_ftz32<Hardware>> sincos(basic_ftz32<Hardware> a) noexcept {
     auto r=detail::ftz32_sincos<Hardware>(a.to_bits()); return {basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(r.sine)),basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(r.cosine))};
   }
   /// \ingroup ftz_math
@@ -329,13 +330,13 @@ export namespace ftz {
   /// infinity are preserved, negative nonzero values give NaN.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard simd_inline simd_const basic_ftz32<Hardware> sqrt(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_sqrt(a.to_bits()))); }
+  native_nodiscard native_inline native_const basic_ftz32<Hardware> sqrt(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_sqrt(a.to_bits()))); }
   /// \ingroup ftz_math
   /// \brief Rounds toward negative infinity, independently of the ambient rounding direction;
   /// retains signed zero and infinities.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard simd_inline basic_ftz32<Hardware> floor(basic_ftz32<Hardware> a) noexcept {
+  native_nodiscard native_inline basic_ftz32<Hardware> floor(basic_ftz32<Hardware> a) noexcept {
     return basic_ftz32<Hardware>::unsafe_from_float32(std::floor(a.to_float()));
   }
   /// \ingroup ftz_math
@@ -343,7 +344,7 @@ export namespace ftz {
   /// retains signed zero and infinities.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard simd_inline basic_ftz32<Hardware> ceil(basic_ftz32<Hardware> a) noexcept {
+  native_nodiscard native_inline basic_ftz32<Hardware> ceil(basic_ftz32<Hardware> a) noexcept {
     return basic_ftz32<Hardware>::unsafe_from_float32(std::ceil(a.to_float()));
   }
   /// \ingroup ftz_math
@@ -351,45 +352,45 @@ export namespace ftz {
   /// zero and infinities.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard simd_inline basic_ftz32<Hardware> trunc(basic_ftz32<Hardware> a) noexcept {
+  native_nodiscard native_inline basic_ftz32<Hardware> trunc(basic_ftz32<Hardware> a) noexcept {
     return basic_ftz32<Hardware>::unsafe_from_float32(std::trunc(a.to_float()));
   }
   /// \ingroup ftz_math
   /// \brief Clears the sign bit without floating-point arithmetic.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard constexpr simd_inline simd_const basic_ftz32<Hardware> abs(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_abs(a.to_bits()))); }
+  native_nodiscard constexpr native_inline native_const basic_ftz32<Hardware> abs(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_abs(a.to_bits()))); }
   /// \ingroup ftz_math
   /// \brief Flips the sign bit without floating-point arithmetic.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard constexpr simd_inline simd_const basic_ftz32<Hardware> neg(basic_ftz32<Hardware> a) noexcept { return -a; }
+  native_nodiscard constexpr native_inline native_const basic_ftz32<Hardware> neg(basic_ftz32<Hardware> a) noexcept { return -a; }
   /// \ingroup ftz_math
   /// \brief Tests the encoded NaN class without floating-point arithmetic or quieting a signaling NaN.
   /// \returns A scalar bool.
   template <bool Hardware>
-  simd_nodiscard constexpr simd_inline simd_const bool isnan(basic_ftz32<Hardware> a) noexcept { return detail::ftz32_isnan(a.to_bits()); }
+  native_nodiscard constexpr native_inline native_const bool isnan(basic_ftz32<Hardware> a) noexcept { return detail::ftz32_isnan(a.to_bits()); }
   /// \ingroup ftz_math
   /// \brief Tests for either signed infinity by its encoded bits.
   /// \returns A scalar bool.
   template <bool Hardware>
-  simd_nodiscard constexpr simd_inline simd_const bool isinf(basic_ftz32<Hardware> a) noexcept { return (a.to_bits() & 0x7fffffffu) == detail::ftz32_infinity; }
+  native_nodiscard constexpr native_inline native_const bool isinf(basic_ftz32<Hardware> a) noexcept { return (a.to_bits() & 0x7fffffffu) == detail::ftz32_infinity; }
   /// \ingroup ftz_math
   /// \brief Tests for zero or finite magnitude by its encoded bits.
   /// \returns A scalar bool.
   template <bool Hardware>
-  simd_nodiscard constexpr simd_inline simd_const bool isfinite(basic_ftz32<Hardware> a) noexcept { return (a.to_bits() & 0x7fffffffu) < detail::ftz32_infinity; }
+  native_nodiscard constexpr native_inline native_const bool isfinite(basic_ftz32<Hardware> a) noexcept { return (a.to_bits() & 0x7fffffffu) < detail::ftz32_infinity; }
   /// \ingroup ftz_math
   /// \brief Tests the sign bit, including negative zero and signed NaNs.
   /// \returns A scalar bool.
   template <bool Hardware>
-  simd_nodiscard constexpr simd_inline simd_const bool signbit(basic_ftz32<Hardware> a) noexcept { return (a.to_bits() & detail::ftz32_sign) != 0u; }
+  native_nodiscard constexpr native_inline native_const bool signbit(basic_ftz32<Hardware> a) noexcept { return (a.to_bits() & detail::ftz32_sign) != 0u; }
   /// \ingroup ftz_math
   /// \brief Copies the second operand's sign to the first operand's magnitude, preserving the
   /// magnitude's NaN payload.
   /// \returns A value with the input FTZ policy.
   template <bool Hardware>
-  simd_nodiscard constexpr simd_inline simd_const basic_ftz32<Hardware> copysign(basic_ftz32<Hardware> a, basic_ftz32<Hardware> b) noexcept {
+  native_nodiscard constexpr native_inline native_const basic_ftz32<Hardware> copysign(basic_ftz32<Hardware> a, basic_ftz32<Hardware> b) noexcept {
     return basic_ftz32<Hardware>::from_bits((a.to_bits() & 0x7fffffffu) | (b.to_bits() & detail::ftz32_sign));
   }
   namespace detail {
@@ -408,7 +409,7 @@ export namespace ftz {
   /// and infinity gives NaN.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard constexpr simd_inline auto sin(T && a)
+  native_nodiscard constexpr native_inline auto sin(T && a)
     noexcept(noexcept(sin(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return sin(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -417,7 +418,7 @@ export namespace ftz {
   /// infinity gives NaN.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard constexpr simd_inline auto cos(T && a)
+  native_nodiscard constexpr native_inline auto cos(T && a)
     noexcept(noexcept(cos(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return cos(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -426,7 +427,7 @@ export namespace ftz {
   /// named fields.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard constexpr simd_inline auto sincos(T && a)
+  native_nodiscard constexpr native_inline auto sincos(T && a)
     noexcept(noexcept(sincos(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return sincos(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -435,7 +436,7 @@ export namespace ftz {
   /// infinities give signed one.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard constexpr simd_inline auto tanh(T && a)
+  native_nodiscard constexpr native_inline auto tanh(T && a)
     noexcept(noexcept(tanh(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return tanh(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -444,7 +445,7 @@ export namespace ftz {
   /// negative nonzero values give NaN.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard constexpr simd_inline auto log(T && a)
+  native_nodiscard constexpr native_inline auto log(T && a)
     noexcept(noexcept(log(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return log(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -453,7 +454,7 @@ export namespace ftz {
   /// zero is preserved.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard constexpr simd_inline auto log1p(T && a)
+  native_nodiscard constexpr native_inline auto log1p(T && a)
     noexcept(noexcept(log1p(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return log1p(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -462,7 +463,7 @@ export namespace ftz {
   /// positive infinity is preserved.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard constexpr simd_inline auto exp(T && a)
+  native_nodiscard constexpr native_inline auto exp(T && a)
     noexcept(noexcept(exp(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return exp(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -470,7 +471,7 @@ export namespace ftz {
   /// \brief Approximates exp(x)-1 without subtracting one for tiny x; signed zero is preserved.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard constexpr simd_inline auto expm1(T && a)
+  native_nodiscard constexpr native_inline auto expm1(T && a)
     noexcept(noexcept(expm1(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return expm1(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -479,7 +480,7 @@ export namespace ftz {
   /// infinity are preserved, negative nonzero values give NaN.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard constexpr simd_inline auto sqrt(T && a)
+  native_nodiscard constexpr native_inline auto sqrt(T && a)
     noexcept(noexcept(sqrt(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return sqrt(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -488,7 +489,7 @@ export namespace ftz {
   /// retains signed zero and infinities.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard simd_inline auto floor(T && a)
+  native_nodiscard native_inline auto floor(T && a)
     noexcept(noexcept(floor(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return floor(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -497,7 +498,7 @@ export namespace ftz {
   /// retains signed zero and infinities.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard simd_inline auto ceil(T && a)
+  native_nodiscard native_inline auto ceil(T && a)
     noexcept(noexcept(ceil(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return ceil(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -506,7 +507,7 @@ export namespace ftz {
   /// zero and infinities.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard simd_inline auto trunc(T && a)
+  native_nodiscard native_inline auto trunc(T && a)
     noexcept(noexcept(trunc(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return trunc(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -514,7 +515,7 @@ export namespace ftz {
   /// \brief Clears the sign bit without floating-point arithmetic.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard constexpr simd_inline auto abs(T && a)
+  native_nodiscard constexpr native_inline auto abs(T && a)
     noexcept(noexcept(abs(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return abs(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -522,7 +523,7 @@ export namespace ftz {
   /// \brief Flips the sign bit without floating-point arithmetic.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard constexpr simd_inline auto neg(T && a)
+  native_nodiscard constexpr native_inline auto neg(T && a)
     noexcept(noexcept(neg(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return neg(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -530,7 +531,7 @@ export namespace ftz {
   /// \brief Tests the encoded NaN class without floating-point arithmetic or quieting a signaling NaN.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard constexpr simd_inline auto isnan(T && a)
+  native_nodiscard constexpr native_inline auto isnan(T && a)
     noexcept(noexcept(isnan(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return isnan(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -538,7 +539,7 @@ export namespace ftz {
   /// \brief Tests for either signed infinity by its encoded bits.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard constexpr simd_inline auto isinf(T && a)
+  native_nodiscard constexpr native_inline auto isinf(T && a)
     noexcept(noexcept(isinf(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return isinf(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -546,7 +547,7 @@ export namespace ftz {
   /// \brief Tests for zero or finite magnitude by its encoded bits.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard constexpr simd_inline auto isfinite(T && a)
+  native_nodiscard constexpr native_inline auto isfinite(T && a)
     noexcept(noexcept(isfinite(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return isfinite(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -554,7 +555,7 @@ export namespace ftz {
   /// \brief Tests the sign bit, including negative zero and signed NaNs.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class T> requires detail::scalar_argument<T &&>
-  simd_nodiscard constexpr simd_inline auto signbit(T && a)
+  native_nodiscard constexpr native_inline auto signbit(T && a)
     noexcept(noexcept(signbit(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
     return signbit(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
@@ -578,7 +579,7 @@ export namespace ftz {
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class A,class B,class C> requires detail::scalar_arguments<A &&,B &&,C &&> &&
       (!(ftz32_type<A> && ftz32_type<B> && ftz32_type<C>))
-  simd_nodiscard simd_inline auto fma(A && a,B && b,C && c)
+  native_nodiscard native_inline auto fma(A && a,B && b,C && c)
       noexcept(noexcept(fma(detail::scalar_arguments_t<A &&,B &&,C &&>(std::forward<A>(a)),
         detail::scalar_arguments_t<A &&,B &&,C &&>(std::forward<B>(b)),
         detail::scalar_arguments_t<A &&,B &&,C &&>(std::forward<C>(c))))) {
@@ -591,7 +592,7 @@ export namespace ftz {
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class A,class B> requires detail::scalar_arguments<A &&,B &&> &&
       (!(ftz32_type<A> && ftz32_type<B>))
-  simd_nodiscard constexpr simd_inline auto atan2(A && a,B && b)
+  native_nodiscard constexpr native_inline auto atan2(A && a,B && b)
       noexcept(noexcept(atan2(detail::scalar_arguments_t<A &&,B &&>(std::forward<A>(a)),
         detail::scalar_arguments_t<A &&,B &&>(std::forward<B>(b))))) {
     using F=detail::scalar_arguments_t<A &&,B &&>;
@@ -603,7 +604,7 @@ export namespace ftz {
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
   template <class A,class B> requires detail::scalar_arguments<A &&,B &&> &&
       (!(ftz32_type<A> && ftz32_type<B>))
-  simd_nodiscard constexpr simd_inline auto copysign(A && a,B && b)
+  native_nodiscard constexpr native_inline auto copysign(A && a,B && b)
       noexcept(noexcept(copysign(detail::scalar_arguments_t<A &&,B &&>(std::forward<A>(a)),
         detail::scalar_arguments_t<A &&,B &&>(std::forward<B>(b))))) {
     using F=detail::scalar_arguments_t<A &&,B &&>;

@@ -5,7 +5,7 @@ providers, headers and archive through FTZ's exported dependency, then builds
 another static library with an exported C++26 module. The final executable
 imports that library's module and links only its CMake target.
 
-The exported inline wrapper uses `simd::vec<ftz::ftz32,4,Arch>` and FMA across the module
+The exported inline wrapper uses `native::simd<ftz::ftz32,4,Arch>` and FMA across the module
 boundary; an out-of-line function requires real archive linkage and native FTZ
 controls. Configure `TEST_ISA=AVX2`, `AVX512`, or `NEON` for the chosen package.
 `TEST_IPO` and `TEST_PCH` exercise LTO and separately compiled PCHs. Run only on

@@ -38,23 +38,23 @@ namespace {
   }
   template<class F,std::size_t L,std::size_t K>
   void shapes(std::vector<std::uint32_t> const & words) {
-    using V=simd::vec<F,L,FTZ_TEST_ARCH>;using W=simd::wide<V,K>;
+    using V=::native::simd<F,L,FTZ_TEST_ARCH>;using W=::native::wide<V,K>;
     static_assert(std::same_as<decltype(ftz::tanh(V{})),V>);
     static_assert(std::same_as<decltype(tanh(W{})),W>);
     static_assert(noexcept(ftz::tanh(V{})) && noexcept(tanh(W{})));
     auto empty=ftz::tanh(std::array<V,0>{});(void)empty;
-    auto empty_wide=tanh(simd::wide<V,0>{});(void)empty_wide;
+    auto empty_wide=tanh(::native::wide<V,0>{});(void)empty_wide;
     for(std::size_t i=0;i<words.size();i+=L*K) {
       std::array<V,K> inputs{};std::array<std::array<F,L>,K> lanes{};
       for(std::size_t j=0;j<K;++j) {
         for(std::size_t n=0;n<L;++n)lanes[j][n]=F::from_bits(words[(i+j*L+n)%words.size()]);
-        inputs[j]=simd::load_simd<V>(lanes[j]);
+        inputs[j]=native::load_simd<V>(lanes[j]);
       }
       auto batch=ftz::tanh(inputs);auto wide=tanh(W{inputs});
       for(std::size_t j=0;j<K;++j) {
         std::array<F,L> actual{},staged{},individual{};
-        simd::store_simd(actual.data(),batch[j]);simd::store_simd(staged.data(),wide.registers[j]);
-        simd::store_simd(individual.data(),ftz::tanh(inputs[j]));
+        native::store_simd(actual.data(),batch[j]);native::store_simd(staged.data(),wide.registers[j]);
+        native::store_simd(individual.data(),ftz::tanh(inputs[j]));
         for(std::size_t n=0;n<L;++n) {
           auto expected=ftz::tanh(lanes[j][n]).to_bits();
           check(actual[n].to_bits(),expected);check(staged[n].to_bits(),expected);check(individual[n].to_bits(),expected);
@@ -74,7 +74,7 @@ namespace {
     record_common=true;
     for(std::size_t i=0;i<words.size();i+=3) {
       std::array<F,3> a{F::from_bits(words[i]),F::from_bits(words[(i+1)%words.size()]),F::from_bits(words[(i+2)%words.size()])};
-      auto r=tanh(simd::wide<F,3>{a});
+      auto r=tanh(::native::wide<F,3>{a});
       for(std::size_t j=0;j<3;++j)check(r.registers[j].to_bits(),ftz::tanh(a[j]).to_bits());
     }
   }
