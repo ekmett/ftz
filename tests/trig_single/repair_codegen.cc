@@ -4,8 +4,8 @@
 namespace {
   constexpr std::size_t lanes=FTZ_TEST_PROFILE/32;
   template<class F> void pair(float *sine,float *cosine,float const *input) {
-    using V=simd::vec<F,lanes,FTZ_TEST_ARCH>;
-    using R=simd::vec<float,lanes,FTZ_TEST_ARCH>;
+    using V=::native::simd<F,lanes,FTZ_TEST_ARCH>;
+    using R=::native::simd<float,lanes,FTZ_TEST_ARCH>;
     auto result=sincos(V::unsafe_from_float32(R::loadu(input)));
     result.first.to_native().storeu(sine);result.second.to_native().storeu(cosine);
   }

@@ -8,7 +8,7 @@ UNARY(sqrt) UNARY(sin) UNARY(cos) UNARY(exp) UNARY(expm1) UNARY(log) UNARY(log1p
 template<class R> concept has_atan2=requires(R a){{atan2(a,a)}->std::same_as<R>;};
 template<class R> void show(char const* name){std::printf("%s sqrt=%d sin=%d cos=%d exp=%d expm1=%d log=%d log1p=%d tanh=%d atan2=%d\n",name,has_sqrt<R>,has_sin<R>,has_cos<R>,has_exp<R>,has_expm1<R>,has_log<R>,has_log1p<R>,has_tanh<R>,has_atan2<R>);}
 template<class T> void check(){
- using R=simd::vec<T,4,arch>;using W=simd::wide<T,2>;using WV=simd::wide<R,2>;
+ using R=::native::simd<T,4,arch>;using W=::native::wide<T,2>;using WV=::native::wide<R,2>;
  static_assert(has_log<T> && has_log1p<T> && has_tanh<T> && has_atan2<T>);
  static_assert(has_log<W> && has_log1p<W> && has_tanh<W> && has_atan2<W>);
  static_assert(has_log<R> && has_log1p<R> && has_tanh<R> && has_atan2<R>);

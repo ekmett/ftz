@@ -15,7 +15,7 @@ consistent dependency configuration through an application and its libraries.
 cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ \
   -DCMAKE_PREFIX_PATH=/path/to/simd -DCMAKE_BUILD_TYPE=Release \
   -DFTZ_ENABLE_PCH=ON -DFTZ_ENABLE_IPO=ON
-cmake --build build --parallel 2
+cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 cmake --install build --prefix /path/to/ftz
 ```
@@ -25,36 +25,41 @@ On a host admitted for AVX-512, set `-DFTZ_TEST_PROFILES="AVX2;AVX512"`
 to exercise both native widths; the test executables assume their selected ISA
 is available. Merely compiling an ISA provider does not establish that.
 Exceptions default to disabled. An exception-enabled
-consumer uses packages built with both `SIMD_ENABLE_EXCEPTIONS=ON` and
+consumer uses packages built with both `NATIVE_ENABLE_EXCEPTIONS=ON` and
 `FTZ_ENABLE_EXCEPTIONS=ON`.
 
 ```cmake
 find_package(ftz CONFIG REQUIRED COMPONENTS ftz)
 add_executable(example example.cc)
-target_link_libraries(example PRIVATE ftz::ftz simd::simd)
-simd_target_profile(example AVX2)
+target_link_libraries(example PRIVATE ftz::ftz native::native)
+native_target_profile(example AVX2)
 ```
 
 `ftz::ftz` supplies the `ftz` and `ftz.controls` modules and static archive. It
-depends on SIMD's common/minimal modules and headers. Numerical consumers link
-`simd::simd` and import `simd`; ISA values select vector families within
-that hub. The compatibility targets `simd::avx2`, `simd::avx512` and `simd::neon`
+depends on SIMD's `native` provider and headers. The provider supplies `native.math`
+for FTZ's exponential kernel without adding optional ISA requirements.
+Numerical consumers link
+`native::native` and import `native`; import `native.math` when using raw SIMD math.
+The FTZ numerical overloads are exported by `ftz`. ISA values select vector
+families within that hub. The profile target aliases `native::avx2`, `native::avx512` and `native::neon`
 refer to the same hub, not separate profile archives.
 
-FTZ's numerical helpers still use the consuming translation unit's native ISA
-settings. Keep `simd_target_profile` on those consumers and admit the selected
+FTZ's numerical helpers use the consuming translation unit's native ISA
+settings. Keep `native_target_profile` on those consumers and admit the selected
 ISA before entry. Importing the hub does not perform admission or configure the
 thread's FP controls. Controls-only consumers inherit the configured SIMD
 package minimum without an additional numerical profile. That minimum defaults
-to AVX2/FMA/BMI2 on x86 and the platform NEON baseline on ARM64; the dependency
-build can configure it through `SIMD_MINIMAL_COMPILE_OPTIONS`. Applications must
+to the compiler target baseline; the dependency
+build can configure it through `NATIVE_MINIMAL_COMPILE_OPTIONS`. Applications must
 admit that minimum too. Include both installed package prefixes in
 `CMAKE_PREFIX_PATH`.
 
-Structural ISA values replace type tags in SIMD template arguments, changing
-vector type identities from the earlier API. Rebuild FTZ and every consumer
-together, including libraries whose interfaces contain SIMD values; do not mix
-old and new objects or BMIs.
+Native vectors use `native::simd<T,N,Arch>`. Architecture values have type
+`native::isa<Family>`, with `native::isa<>` denoting the compiler target family.
+An ARM or Wasm value cannot select an x86 register backend, and vice versa.
+Omitting `Arch` uses the baseline captured by the SIMD module provider; stronger
+vectors need an explicit admitted feature set such as `native::avx2` or
+`native::neon`. Keep one compatible module build throughout an application.
 
 `FTZ_FP32_HARDWARE_FTZ` is a package build setting selecting the compatibility
 alias `ftz::ftz32`, and defaults to zero. Importing a module does not export
@@ -93,18 +98,24 @@ Explicit `-include-pch` binary inputs, including CMake's `-Xclang` spelling,
 are appended to `SCCACHE_EXTRAFILES`; existing entries are preserved. The
 pinned sccache version does not otherwise hash these PCH binaries, which can
 leave a cached module referring to a different PCH. Ambiguous or missing PCH
-inputs bypass caching. Windows keeps direct sccache because clang-cl's PCH
-and forwarded module flags remain unsupported by the pinned release.
+inputs bypass caching. Windows uses the same launcher and bypasses caching for
+module/PCH inputs,
+opaque response files and unknown compiler names. Ordinary clang-cl translation
+units remain cacheable. The child compiler's exit status is preserved on both
+direct and cached paths.
 
 The launcher and tests are shared with SIMD; keep the implementations aligned.
-POSIX CI runs `test_sccache_launcher.py` and the real PCH/module warm-cache
-fixture `test_sccache_pch.py`. Neither disables PCH validation. See the
+All platforms run `test_sccache_launcher.py`. POSIX CI also runs the real
+PCH/module warm-cache fixture `test_sccache_pch.py`; Windows runs
+`test_sccache_modules.py`, which changes a module implementation while retaining
+the importer source and separately verifies an ordinary warm cache hit. Neither
+disables PCH validation. See the
 [validation boundary](https://github.com/ekmett/ftz/blob/main/docs/validation.md#pch-dependent-module-invalidation)
-for the observed regression and checks required of this repair.
+for the cache invalidation checks.
 
 For local producer builds, install sccache separately and put it on `PATH`.
 Add `-DCMAKE_CXX_COMPILER_LAUNCHER=sccache` for its normal local disk cache, or
-use the same POSIX module-map launcher from the FTZ checkout:
+use the same platform-aware launcher from the FTZ checkout:
 
 ```sh
 -DCMAKE_CXX_COMPILER_LAUNCHER="$(command -v python3);$PWD/.github/scripts/sccache_launcher.py"

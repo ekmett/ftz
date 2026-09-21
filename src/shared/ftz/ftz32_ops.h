@@ -1,6 +1,6 @@
 #pragma once
 #include "ftz/config.h"
-#include "simd/attributes.h"
+#include "native/attributes.h"
 #include "ftz/math/approx.h"
 #include "ftz/math/float.h"
 #include "ftz/math/words.h"
@@ -14,26 +14,26 @@ namespace ftz { namespace detail {
   static const unsigned int ftz32_infinity = 0x7f800000u;
   static const unsigned int ftz32_sign = 0x80000000u;
 
-  simd_nodiscard simd_constexpr simd_inline simd_const unsigned int ftz32_canonical(unsigned int bits) {
+  native_nodiscard native_constexpr native_inline native_const unsigned int ftz32_canonical(unsigned int bits) {
     unsigned int magnitude = bits & 0x7fffffffu;
     // Import normalization is mandatory even on DAZ hardware: integer loads,
     // comparisons, stores and casts observe the original bits without arithmetic.
     return magnitude < 0x00800000u ? bits & ftz32_sign : bits;
   }
-  simd_nodiscard simd_constexpr simd_inline simd_const bool ftz32_isnan(unsigned int bits) {
+  native_nodiscard native_constexpr native_inline native_const bool ftz32_isnan(unsigned int bits) {
     return (bits & 0x7fffffffu) > ftz32_infinity;
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_finish(unsigned int bits) {
+  native_nodiscard native_inline native_const unsigned int ftz32_finish(unsigned int bits) {
     return ::ftz::detail::math::fp32_encode(::ftz::detail::math::fp32_ftz<Hardware>(::ftz::detail::math::fp32_decode(bits)));
   }
-  simd_nodiscard simd_constexpr simd_inline simd_const unsigned int ftz32_neg(unsigned int a) {
+  native_nodiscard native_constexpr native_inline native_const unsigned int ftz32_neg(unsigned int a) {
     return a ^ ftz32_sign;
   }
-  simd_nodiscard simd_constexpr simd_inline simd_const unsigned int ftz32_abs(unsigned int a) { return a & 0x7fffffffu; }
+  native_nodiscard native_constexpr native_inline native_const unsigned int ftz32_abs(unsigned int a) { return a & 0x7fffffffu; }
 
   template <bool HardwareFtz>
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_add_policy(unsigned int a, unsigned int b) {
+  native_nodiscard native_inline native_const unsigned int ftz32_add_policy(unsigned int a, unsigned int b) {
 #ifdef __cplusplus
     float value = ::ftz::detail::math::fp32_decode(a) + ::ftz::detail::math::fp32_decode(b);
 #else
@@ -51,12 +51,12 @@ namespace ftz { namespace detail {
     return bits;
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_add(unsigned int a, unsigned int b) {
+  native_nodiscard native_inline native_const unsigned int ftz32_add(unsigned int a, unsigned int b) {
     // Hardware admission includes signed flushing of tiny add/sub results.
     return ftz32_add_policy<Hardware>(a, b);
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_sub(unsigned int a, unsigned int b) {
+  native_nodiscard native_inline native_const unsigned int ftz32_sub(unsigned int a, unsigned int b) {
     if (Hardware) {
 #ifdef __cplusplus
       return ::ftz::detail::math::fp32_encode(::ftz::detail::math::fp32_decode(a) - ::ftz::detail::math::fp32_decode(b));
@@ -67,7 +67,7 @@ namespace ftz { namespace detail {
     }
     return ftz32_add<Hardware>(a, ftz32_neg(b));
   }
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_mul(unsigned int a, unsigned int b) {
+  native_nodiscard native_inline native_const unsigned int ftz32_mul(unsigned int a, unsigned int b) {
     float value = ::ftz::detail::math::fp32_mul<false>(::ftz::detail::math::fp32_decode(a), ::ftz::detail::math::fp32_decode(b));
     unsigned int bits = ::ftz::detail::math::fp32_encode(value);
     if ((bits & 0x7fffffffu) > 0x00800000u) return bits;
@@ -84,7 +84,7 @@ namespace ftz { namespace detail {
       ::ftz::detail::math::fp32_decode(0xbfffffffu));
     return sign | (residual >= 0.0f ? 0x00800000u : 0u);
   }
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_fma(unsigned int a, unsigned int b, unsigned int c) {
+  native_nodiscard native_inline native_const unsigned int ftz32_fma(unsigned int a, unsigned int b, unsigned int c) {
     float value = ::ftz::detail::math::fp32_fma<false>(::ftz::detail::math::fp32_decode(a),
       ::ftz::detail::math::fp32_decode(b), ::ftz::detail::math::fp32_decode(c));
     unsigned int bits = ::ftz::detail::math::fp32_encode(value);
@@ -95,7 +95,7 @@ namespace ftz { namespace detail {
     return bits;
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_div(unsigned int a, unsigned int b) {
+  native_nodiscard native_inline native_const unsigned int ftz32_div(unsigned int a, unsigned int b) {
     unsigned int aa = a & 0x7fffffffu, bb = b & 0x7fffffffu;
     unsigned int sign = (a ^ b) & ftz32_sign;
     if (aa > ftz32_infinity || bb > ftz32_infinity ||
@@ -106,18 +106,18 @@ namespace ftz { namespace detail {
     ::ftz::detail::math::approx_result r = ::ftz::detail::math::approx_div_prechecked_words(a, b);
     return r.valid != 0u ? ftz32_finish<Hardware>(r.bits) : sign | ftz32_infinity;
   }
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_sqrt(unsigned int a) {
+  native_nodiscard native_inline native_const unsigned int ftz32_sqrt(unsigned int a) {
     unsigned int magnitude = a & 0x7fffffffu;
     if (magnitude == 0u) return a;
     if ((a & ftz32_sign) != 0u || magnitude > ftz32_infinity) return ftz32_nan;
     if (magnitude == ftz32_infinity) return a;
     return ::ftz::detail::math::approx_sqrt_prechecked_words(a).bits;
   }
-  simd_nodiscard simd_constexpr simd_inline simd_const bool ftz32_equal(unsigned int a, unsigned int b) {
+  native_nodiscard native_constexpr native_inline native_const bool ftz32_equal(unsigned int a, unsigned int b) {
     return !ftz32_isnan(a) && !ftz32_isnan(b) &&
       (a == b || ((a | b) & 0x7fffffffu) == 0u);
   }
-  simd_nodiscard simd_constexpr simd_inline simd_const bool ftz32_less(unsigned int a, unsigned int b) {
+  native_nodiscard native_constexpr native_inline native_const bool ftz32_less(unsigned int a, unsigned int b) {
     if (ftz32_isnan(a) || ftz32_isnan(b) || ftz32_equal(a, b)) return false;
     if (((a ^ b) & ftz32_sign) != 0u) return (a & ftz32_sign) != 0u;
     return (a & ftz32_sign) != 0u ? a > b : a < b;
@@ -135,7 +135,7 @@ namespace ftz { namespace detail {
 namespace ftz { namespace detail {
   struct ftz32_trig_fraction { unsigned int words[9]; };
   struct ftz32_trig_reduction { unsigned int residual, quadrant; };
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_trig_window(ftz32_trig_fraction p, unsigned int shift) {
+  native_nodiscard native_inline native_const unsigned int ftz32_trig_window(ftz32_trig_fraction p, unsigned int shift) {
     unsigned int word=shift/32u, bit=shift%32u;
     if(word>=9u)return 0u;
     unsigned int result=p.words[word]>>bit;
@@ -145,7 +145,7 @@ namespace ftz { namespace detail {
   // Finite positive magnitude >=8192. A 256-bit fixed 2/pi and 24-bit input
   // significand cover every binary32 exponent using uint32 limbs only.
   // Truncation contributes less than 2^-128 turns at the largest finite input.
-  simd_nodiscard simd_inline simd_const ftz32_trig_reduction ftz32_trig_reduce(unsigned int magnitude) {
+  native_nodiscard native_inline native_const ftz32_trig_reduction ftz32_trig_reduce(unsigned int magnitude) {
     const unsigned int two_over_pi[8]={0xdebbc561u,0xfe5163abu,0x3c439041u,0xdb629599u,0xf534ddc0u,0xfc2757d1u,0x4e441529u,0xa2f9836eu};
     unsigned int mantissa=(magnitude&0x007fffffu)|0x00800000u;
     ftz32_trig_fraction p;
@@ -193,7 +193,7 @@ namespace ftz { namespace detail {
 namespace ftz { namespace detail {
   struct ftz32_sincos_bits { unsigned int sine, cosine; };
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const ftz32_sincos_bits ftz32_sincos(unsigned int bits) {
+  native_nodiscard native_inline native_const ftz32_sincos_bits ftz32_sincos(unsigned int bits) {
     ftz32_sincos_bits result;
     unsigned int magnitude=bits&0x7fffffffu;
     if(magnitude>=ftz32_infinity){result.sine=result.cosine=ftz32_nan;return result;}
@@ -220,7 +220,7 @@ namespace ftz { namespace detail {
 #ifdef __cplusplus
   // A known scalar quadrant selects one reduced polynomial, then its sign.
   template <bool Cosine, bool Hardware>
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_trig_single(unsigned int bits) {
+  native_nodiscard native_inline native_const unsigned int ftz32_trig_single(unsigned int bits) {
     unsigned int magnitude=bits&0x7fffffffu;
     if(magnitude>=ftz32_infinity)return ftz32_nan;
     if(magnitude<0x46000000u) {
@@ -240,7 +240,7 @@ namespace ftz { namespace detail {
   }
 #endif
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_sin(unsigned int bits){
+  native_nodiscard native_inline native_const unsigned int ftz32_sin(unsigned int bits){
 #ifdef __cplusplus
     return ftz32_trig_single<false,Hardware>(bits);
 #else
@@ -248,7 +248,7 @@ namespace ftz { namespace detail {
 #endif
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_cos(unsigned int bits){
+  native_nodiscard native_inline native_const unsigned int ftz32_cos(unsigned int bits){
 #ifdef __cplusplus
     return ftz32_trig_single<true,Hardware>(bits);
 #else
@@ -256,14 +256,14 @@ namespace ftz { namespace detail {
 #endif
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_tanh(unsigned int bits){return ::ftz::detail::math::tanh_words<Hardware>(bits);}
+  native_nodiscard native_inline native_const unsigned int ftz32_tanh(unsigned int bits){return ::ftz::detail::math::tanh_words<Hardware>(bits);}
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_log(unsigned int bits){return ::ftz::detail::math::log_words<Hardware>(bits).bits;}
+  native_nodiscard native_inline native_const unsigned int ftz32_log(unsigned int bits){return ::ftz::detail::math::log_words<Hardware>(bits).bits;}
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_log1p(unsigned int bits){return ::ftz::detail::math::log1p_words<Hardware>(bits).bits;}
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_exp(unsigned int bits){
+  native_nodiscard native_inline native_const unsigned int ftz32_log1p(unsigned int bits){return ::ftz::detail::math::log1p_words<Hardware>(bits).bits;}
+  native_nodiscard native_inline native_const unsigned int ftz32_exp(unsigned int bits){
 #ifdef __cplusplus
-    return ::ftz::detail::math::fp32_encode(simd::exp(
+    return ::ftz::detail::math::fp32_encode(::native::exp(
       ftz::detail::native::fp32x1(::ftz::detail::math::fp32_decode(bits)), std::true_type{}).value);
 #else
     unsigned int magnitude=bits&0x7fffffffu;
@@ -273,7 +273,7 @@ namespace ftz { namespace detail {
 #endif
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_expm1(unsigned int bits){
+  native_nodiscard native_inline native_const unsigned int ftz32_expm1(unsigned int bits){
     unsigned int magnitude=bits&0x7fffffffu;
     if(magnitude>ftz32_infinity)return ftz32_nan;
     if(magnitude==ftz32_infinity)return (bits&ftz32_sign)!=0u?0xbf800000u:ftz32_infinity;
@@ -285,7 +285,7 @@ namespace ftz { namespace detail {
 #endif
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  simd_nodiscard simd_inline simd_const unsigned int ftz32_atan2(unsigned int y,unsigned int x){
+  native_nodiscard native_inline native_const unsigned int ftz32_atan2(unsigned int y,unsigned int x){
     unsigned int ay=y&0x7fffffffu,ax=x&0x7fffffffu,sign=y&ftz32_sign;
     if(ay>ftz32_infinity || ax>ftz32_infinity)return ftz32_nan;
     if(ay==0u)return ((x&ftz32_sign)!=0u?0x40490fdbu:0u)|sign;

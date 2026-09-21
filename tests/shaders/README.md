@@ -3,7 +3,7 @@
 Configure this directory against separately installed `simd` and `ftz` prefixes.
 It has no C/C++ language enabled and rejects loading either host archive target.
 The DXC include paths come entirely from `ftz::hlsl`, including the transitive
-`simd::headers` dependency that provides the attributes.
+`native::headers` dependency that provides the attributes.
 
 The build compiles both FTZ policies and both shader integer-width policies,
 validates the SPIR-V and emits Metal source. This checks the package and shader

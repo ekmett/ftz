@@ -22,10 +22,10 @@ if(NOT FTZ_FP32_HARDWARE_FTZ MATCHES "^[01]$")
 endif()
 if(FTZ_BUILD_HOST)
   enable_language(CXX)
-  find_package(simd CONFIG REQUIRED COMPONENTS simd headers)
+  find_package(native CONFIG REQUIRED COMPONENTS native headers)
 else()
   set(CMAKE_INSTALL_LIBDIR lib CACHE PATH "Library installation directory")
-  find_package(simd CONFIG REQUIRED COMPONENTS headers)
+  find_package(native CONFIG REQUIRED COMPONENTS headers)
 endif()
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -47,7 +47,7 @@ target_include_directories(ftz_hlsl INTERFACE
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/shared>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/hlsl>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/shared>")
-target_link_libraries(ftz_hlsl INTERFACE simd::headers)
+target_link_libraries(ftz_hlsl INTERFACE native::headers)
 install(TARGETS ftz_hlsl EXPORT ftzShaderTargets
   FILE_SET shader_headers DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/hlsl"
   FILE_SET shared_headers DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/shared")

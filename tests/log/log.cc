@@ -21,28 +21,28 @@ namespace {
  }
  template<class F> F input(std::size_t i){return F::from_bits(inputs[i]);}
  template<class F,std::size_t N> void vectors(){
-  using V=simd::vec<F,N,FTZ_TEST_ARCH>;
+  using V=::native::simd<F,N,FTZ_TEST_ARCH>;
   static_assert(std::same_as<decltype(log(V{})),V> && std::same_as<decltype(log1p(V{})),V>);
   auto verify=[](V a,V b,std::size_t offset){
-   std::array<F,N> x,y;simd::store_simd(x.data(),a);simd::store_simd(y.data(),b);
+   std::array<F,N> x,y;native::store_simd(x.data(),a);native::store_simd(y.data(),b);
    for(std::size_t j=0;j<N;++j){F original=input<F>(offset+j);check(x[j],ftz::log(original),inputs[offset+j],"log");check(y[j],ftz::log1p(original),inputs[offset+j],"log1p");}
   };
   for(std::size_t i=0;i+2*N<=inputs.size();i+=2*N){
    std::array<F,2*N> values;for(std::size_t j=0;j<2*N;++j)values[j]=input<F>(i+j);
-   V a=simd::load_simd<V>(values.data()),b=simd::load_simd<V>(values.data()+N);
+   V a=native::load_simd<V>(values.data()),b=native::load_simd<V>(values.data()+N);
    verify(log(a),log1p(a),i);
    std::array array{a,b};auto x=log(array),y=log1p(array);
    for(std::size_t j=0;j<2;++j)verify(x[j],y[j],i+j*N);
-   simd::wide wide{a,b};auto wx=log(wide),wy=log1p(wide);
+   ::native::wide wide{a,b};auto wx=log(wide),wy=log1p(wide);
    for(std::size_t j=0;j<2;++j)verify(wx.registers[j],wy.registers[j],i+j*N);
   }
   std::array<V,0> empty;if(!log(empty).empty() || !log1p(empty).empty())std::abort();
-  simd::wide<V,0> wide_empty;(void)log(wide_empty);(void)log1p(wide_empty);
+  ::native::wide<V,0> wide_empty;(void)log(wide_empty);(void)log1p(wide_empty);
  }
  template<class F> void run(){
   for(std::size_t i=0;i+2<=inputs.size();i+=2){
    std::array a{input<F>(i),input<F>(i+1)};auto x=log(a),y=log1p(a);
-   simd::wide w{a};auto wx=log(w),wy=log1p(w);
+   ::native::wide w{a};auto wx=log(w),wy=log1p(w);
    for(std::size_t j=0;j<2;++j){auto sx=ftz::log(a[j]),sy=ftz::log1p(a[j]);
     check(x[j],sx,inputs[i+j],"array log");check(y[j],sy,inputs[i+j],"array log1p");
     check(wx.registers[j],sx,inputs[i+j],"wide log");check(wy.registers[j],sy,inputs[i+j],"wide log1p");}

@@ -29,15 +29,15 @@ arithmetic contract, processes 96 values and restores the caller's FP state.
 
 ```cpp
 import ftz;
-import simd;
+import native;
 
 bool example() {
   ftz::native_fp32_scope region(ftz::native_fp32_mode::gradual);
   if (!ftz::probe_ftz32_cpu<ftz::m32>().admitted()) return false;
 
-  using V = simd::vec<ftz::m32, 8, simd::avx2>;
+  using V = native::simd<ftz::m32, 8, native::avx2>;
   V x(ftz::m32(.25f));
-  simd::wide<V, 12> values(x);
+  native::wide<V, 12> values(x);
   auto y = expm1(values);
   return all(isfinite(y.registers[0]));
 }

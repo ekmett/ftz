@@ -8,9 +8,9 @@ using hardware_type=ftz::ftz32;
 using manual_type=ftz::m32;
 using hardware_type=ftz::h32;
 #endif
-using R=simd::vec<float,8,arch>;
-using HM=simd::vec<hardware_type,8,arch>;
-using MM=simd::vec<manual_type,8,arch>;
+using R=::native::simd<float,8,arch>;
+using HM=::native::simd<hardware_type,8,arch>;
+using MM=::native::simd<manual_type,8,arch>;
 extern "C" [[gnu::noinline]] std::uint32_t hardware_add(hardware_type a,hardware_type b){return (a+b).to_bits();}
 extern "C" [[gnu::noinline]] std::uint32_t hardware_sub(hardware_type a,hardware_type b){return (a-b).to_bits();}
 extern "C" [[gnu::noinline]] std::uint32_t manual_add(manual_type a,manual_type b){return (a+b).to_bits();}
@@ -22,7 +22,7 @@ template<class V> void sub(float * out,float const * a,float const * b) {
   (V::unsafe_from_float32(R::loadu(a))-V::unsafe_from_float32(R::loadu(b))).to_native().storeu(out);
 }
 template<class V,char Op> void wide_op(float * out,float const * a,float const * b,float const * c) {
-  auto get=[](float const * p) {return simd::wide{V::unsafe_from_float32(R::loadu(p)),V::unsafe_from_float32(R::loadu(p+8)),V::unsafe_from_float32(R::loadu(p+16))};};
+  auto get=[](float const * p) {return ::native::wide{V::unsafe_from_float32(R::loadu(p)),V::unsafe_from_float32(R::loadu(p+8)),V::unsafe_from_float32(R::loadu(p+16))};};
   auto x=get(a),y=get(b);
   auto z=[&]{if constexpr(Op=='+')return x+y;else if constexpr(Op=='-')return x-y;else if constexpr(Op=='*')return x*y;else return fma(x,y,get(c));}();
   z.registers[0].to_native().storeu(out);z.registers[1].to_native().storeu(out+8);z.registers[2].to_native().storeu(out+16);

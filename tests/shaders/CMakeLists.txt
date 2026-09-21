@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 4.4)
 project(ftz_shader_consumer LANGUAGES NONE)
 find_package(ftz CONFIG REQUIRED COMPONENTS hlsl)
-if(TARGET simd::simd OR TARGET ftz::ftz)
+if(TARGET native::native OR TARGET ftz::ftz)
   message(FATAL_ERROR "A shader consumer must not load the host library targets.")
 endif()
 find_program(DXC dxc REQUIRED)
@@ -14,7 +14,7 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/include-roots.txt"
 # A custom DXC command does not inherit header dependencies from linking a
 # header target. Use the actual exported file sets, including the attributes.
 set(shader_dependencies)
-foreach(provider IN ITEMS ftz::hlsl simd::headers)
+foreach(provider IN ITEMS ftz::hlsl native::headers)
   get_target_property(header_sets ${provider} INTERFACE_HEADER_SETS)
   foreach(header_set IN LISTS header_sets)
     get_target_property(headers ${provider} HEADER_SET_${header_set})

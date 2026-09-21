@@ -69,8 +69,8 @@ namespace {
 
   template<std::size_t N>
   void vector_checks() {
-    using V = simd::vec<ftz::ftz32,N,FTZ_TEST_ARCH>;
-    using R = simd::vec<float,N,FTZ_TEST_ARCH>;
+    using V = ::native::simd<ftz::ftz32,N,FTZ_TEST_ARCH>;
+    using R = ::native::simd<float,N,FTZ_TEST_ARCH>;
     using M = typename V::mask;
     using bad = conversion<V,true>;
     using good = conversion<V,false>;

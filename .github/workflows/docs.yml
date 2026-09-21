@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           repository: ekmett/simd
-          ref: 3617f667a7a908d957d910c226da7a3d453a05f6
+          ref: a8a98407844041fc0480da6a7e3ad635f2678e52
           path: build/deps/simd
           persist-credentials: false
       - name: Install documentation tools
@@ -45,14 +45,14 @@ jobs:
       - name: Install header-only dependency
         run: |
           cmake -S build/deps/simd -B build/simd -G Ninja \
-            -DSIMD_BUILD_HOST=OFF -DSIMD_BUILD_TESTS=OFF
+            -DNATIVE_BUILD_HOST=OFF -DNATIVE_BUILD_TESTS=OFF
           cmake --install build/simd --prefix "$GITHUB_WORKSPACE/build/prefix"
       - name: Generate C++ and HLSL references
         run: |
           cmake -S . -B build/docs -G Ninja \
             -DFTZ_BUILD_HOST=OFF -DFTZ_BUILD_TESTS=OFF -DFTZ_BUILD_DOCS=ON \
             -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/build/prefix"
-          cmake --build build/docs --target ftz_docs --parallel 2
+          cmake --build build/docs --target ftz_docs --parallel
           python doc/test_module_anchors.py
           python doc/test_links.py
           python doc/check_links.py build/docs/docs/html

@@ -14,7 +14,7 @@
 
 namespace {
   using M=ftz::m32;using H=ftz::h32;
-  template<class F,std::size_t N> using V=simd::vec<F,N,FTZ_TEST_ARCH>;
+  template<class F,std::size_t N> using V=::native::simd<F,N,FTZ_TEST_ARCH>;
   void require(bool x,char const * message) { if(!x){std::fprintf(stderr,"%s\n",message);std::abort();} }
   template<class A,class B> concept addable=requires(A a,B b){a+b;};
   template<class A,class B> concept subtractable=requires(A a,B b){a-b;};
@@ -41,8 +41,8 @@ namespace {
     separate<M,H>();separate<H,M>();
     separate<V<M,4>,V<H,4>>();separate<V<H,4>,V<M,4>>();
     separate<V<M,4>,H>();separate<H,V<M,4>>();
-    separate<simd::wide<M,2>,simd::wide<H,2>>();
-    separate<simd::wide<V<M,4>,2>,simd::wide<V<H,4>,2>>();
+    separate<::native::wide<M,2>,::native::wide<H,2>>();
+    separate<::native::wide<V<M,4>,2>,::native::wide<V<H,4>,2>>();
     return true;
   }();
   static_assert(independent);
@@ -56,10 +56,10 @@ namespace {
   using packet=std::vector<std::uint32_t>;
   template<class F> void append(packet & p,F value) requires ftz::ftz32_type<F> {p.push_back(value.to_bits());}
   template<class F,std::size_t N> void append(packet & p,V<F,N> const & value) {
-    std::array<F,N> lanes{};simd::store_simd(lanes.data(),value);
+    std::array<F,N> lanes{};native::store_simd(lanes.data(),value);
     for(auto lane:lanes)append(p,lane);
   }
-  template<class R,std::size_t N> void append(packet & p,simd::wide<R,N> const & value) {
+  template<class R,std::size_t N> void append(packet & p,::native::wide<R,N> const & value) {
     for(auto const & item:value.registers)append(p,item);
   }
   template<class R> void operations(packet & out,R a,R b,R c) {
@@ -74,20 +74,20 @@ namespace {
     for(std::size_t i=0;i<bank.size();++i) {
       std::array<F,N>a{},b{},c{};
       for(std::size_t lane=0;lane<N;++lane){a[lane]=F::from_bits(bank[(i+lane)%bank.size()]);b[lane]=F::from_bits(bank[(i+lane*3+5)%bank.size()]);c[lane]=F::from_bits(bank[(i+lane*7+11)%bank.size()]);}
-      auto x=simd::load_simd<R>(a),y=simd::load_simd<R>(b),z=simd::load_simd<R>(c);
+      auto x=native::load_simd<R>(a),y=native::load_simd<R>(b),z=native::load_simd<R>(c);
       operations(out,x,y,z);
-      operations(out,simd::wide{x,y,z},simd::wide{z,x,y},simd::wide{y,z,x});
+      operations(out,::native::wide{x,y,z},::native::wide{z,x,y},::native::wide{y,z,x});
     }
-    auto empty=simd::wide<R,0>{};append(out,exp(empty));append(out,fma(empty,empty,empty));
+    auto empty=::native::wide<R,0>{};append(out,exp(empty));append(out,fma(empty,empty,empty));
   }
   template<class F> void swizzles() {
     using R=V<F,3>;
     std::array<std::uint32_t,3> w{0x80000000u,1u,0x7fa12345u};
     std::array<F,3> a{};for(std::size_t i=0;i<3;++i)a[i]=F::unsafe_from_float32(std::bit_cast<float>(w[i]));
-    auto value=simd::load_simd<R>(a);auto saved=value.xyz;value.xyz=value.zyx;
-    std::array<F,3> actual{};simd::store_simd(actual.data(),value);
+    auto value=native::load_simd<R>(a);auto saved=value.xyz;value.xyz=value.zyx;
+    std::array<F,3> actual{};native::store_simd(actual.data(),value);
     for(std::size_t i=0;i<3;++i)require(actual[i].to_bits()==w[2-i],"policy typed swizzle normalized a word");
-    simd::store_simd(actual.data(),saved);for(std::size_t i=0;i<3;++i)require(actual[i].to_bits()==w[i],"policy owning swizzle changed");
+    native::store_simd(actual.data(),saved);for(std::size_t i=0;i<3;++i)require(actual[i].to_bits()==w[i],"policy owning swizzle changed");
     static_assert(std::same_as<decltype(value.xy),V<F,2>>);
   }
   struct conversion_failure {};
@@ -140,7 +140,7 @@ namespace {
 #if FTZ_TEST_PROFILE == 512
     vectors<F,16>(out);
 #endif
-    operations(out,simd::wide{F(.25f),F(-1.f),F(1.f)},simd::wide{F(1),F(2),F(3)},simd::wide{F(4),F(5),F(6)});
+    operations(out,::native::wide{F(.25f),F(-1.f),F(1.f)},::native::wide{F(1),F(2),F(3)},::native::wide{F(4),F(5),F(6)});
     swizzles<F>();scalar_adapters<F>();return out;
   }
   void equal(packet const & a,packet const & b) {

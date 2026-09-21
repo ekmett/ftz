@@ -10,7 +10,7 @@
 #include "support/imports.h"
 
 namespace {
-  using namespace simd;
+  using namespace native;
   using namespace ftz;
   namespace core = ftz::detail;
   void require(bool value, char const * message) {
@@ -57,7 +57,7 @@ namespace {
       0xff800000u,0xffa12345u,0x7fc00000u,0x3f000000u
     };
     for (std::size_t offset=0;offset<(N==0?1:std::size(focused));++offset) {
-      simd::wide<R,N> input{};
+      ::native::wide<R,N> input{};
       std::array<std::array<std::uint32_t,lanes>,N> words{};
       for (std::size_t reg=0;reg<N;++reg) {
         for (std::size_t lane=0;lane<lanes;++lane)
@@ -68,10 +68,10 @@ namespace {
       auto [sine_values,cosine_values]=sincos(input);
       auto exponential=exp(input);
       auto minus_one=expm1(input);
-      static_assert(std::same_as<decltype(sine_values),simd::wide<R,N>>);
-      static_assert(std::same_as<decltype(cosine_values),simd::wide<R,N>>);
-      static_assert(std::same_as<decltype(exponential),simd::wide<R,N>>);
-      static_assert(std::same_as<decltype(minus_one),simd::wide<R,N>>);
+      static_assert(std::same_as<decltype(sine_values),::native::wide<R,N>>);
+      static_assert(std::same_as<decltype(cosine_values),::native::wide<R,N>>);
+      static_assert(std::same_as<decltype(exponential),::native::wide<R,N>>);
+      static_assert(std::same_as<decltype(minus_one),::native::wide<R,N>>);
       require(sine_values.registers.size()==N && cosine_values.registers.size()==N &&
         exponential.registers.size()==N && minus_one.registers.size()==N,"wide function result shape");
       for (std::size_t reg=0;reg<N;++reg) {
@@ -96,7 +96,7 @@ namespace {
     }
   }
   template <class V> void check_functions() {
-    using R = simd::vec<ftz32,V::lanes,FTZ_TEST_ARCH>;
+    using R = ::native::simd<ftz32,V::lanes,FTZ_TEST_ARCH>;
     check_function_shape<R,0>();
     check_function_shape<R,1>();
     check_function_shape<R,5>();
@@ -111,7 +111,7 @@ namespace {
     }
     auto rows = bank();
     for (std::size_t start = 0; start < rows.size(); start += R::lanes) {
-      simd::wide<R,3> input;
+      ::native::wide<R,3> input;
       std::array<std::array<std::uint32_t,R::lanes>,3> words{};
       for(std::size_t reg=0;reg<3;++reg) {
         for(std::size_t lane=0;lane<R::lanes && start+lane<rows.size();++lane)
@@ -131,7 +131,7 @@ namespace {
         expected(minus_one.registers[reg],want,"wide expm1");
       }
     }
-    simd::wide<ftz32,3> scalar{{ftz32(.125f),ftz32(-90.0f),ftz32(10000.0f)}};
+    ::native::wide<ftz32,3> scalar{{ftz32(.125f),ftz32(-90.0f),ftz32(10000.0f)}};
     auto [sine_values,cosine_values]=sincos(scalar); auto e=exp(scalar); auto m=expm1(scalar);
     for(std::size_t i=0;i<3;++i) {
       auto word=scalar.registers[i].to_bits();
@@ -141,38 +141,38 @@ namespace {
       require(m.registers[i].to_bits()==core::ftz32_expm1(word),"scalar-wide expm1");
     }
   }
-  template <class... X> concept deduces_simd = requires (X... x) { simd::vec{FTZ_TEST_ARCH,x...}; };
+  template <class... X> concept deduces_simd = requires (X... x) { ::native::simd{FTZ_TEST_ARCH,x...}; };
   static_assert(!deduces_simd<float> && !deduces_simd<ftz32>);
-  template <class T> concept partial_import = requires (T const * p) { simd::load_simd_partial<simd::vec<ftz32,1,FTZ_TEST_ARCH>>(p,0); };
-  template <class T> concept partial_export = requires (T * p,simd::vec<ftz32,1,FTZ_TEST_ARCH> v) { simd::store_simd_partial(p,v,0); };
+  template <class T> concept partial_import = requires (T const * p) { native::load_simd_partial<::native::simd<ftz32,1,FTZ_TEST_ARCH>>(p,0); };
+  template <class T> concept partial_export = requires (T * p,::native::simd<ftz32,1,FTZ_TEST_ARCH> v) { native::store_simd_partial(p,v,0); };
   template <class T> struct recognize_simd;
-  template <class T,std::size_t N,simd::isa Arch> struct recognize_simd<simd::vec<T,N,Arch>> {
+  template <class T,std::size_t N,native::isa<> Arch> struct recognize_simd<::native::simd<T,N,Arch>> {
     using value_type=T;static constexpr auto lanes=N;
   };
   void check_construction() {
-    constexpr auto scalar_constant=simd::vec<float,1,FTZ_TEST_ARCH>{1.0f};
+    constexpr auto scalar_constant=::native::simd<float,1,FTZ_TEST_ARCH>{1.0f};
     static_assert(scalar_constant.value==1.0f);
-    static_assert(std::same_as<decltype(simd::vec<float,1,FTZ_TEST_ARCH>{1.0f}),simd::vec<float,1,FTZ_TEST_ARCH>>);
-    static_assert(std::same_as<decltype(simd::vec<ftz32,1,FTZ_TEST_ARCH>{ftz32(1.0f)}),simd::vec<ftz32,1,FTZ_TEST_ARCH>>);
-    static_assert(std::same_as<decltype(simd::vec<float,2,FTZ_TEST_ARCH>{1.f,2.f}),simd::vec<float,2,FTZ_TEST_ARCH>>);
-    static_assert(std::same_as<decltype(simd::vec<float,3,FTZ_TEST_ARCH>{1.f,2.f,3.f}),simd::vec<float,3,FTZ_TEST_ARCH>>);
+    static_assert(std::same_as<decltype(::native::simd<float,1,FTZ_TEST_ARCH>{1.0f}),::native::simd<float,1,FTZ_TEST_ARCH>>);
+    static_assert(std::same_as<decltype(::native::simd<ftz32,1,FTZ_TEST_ARCH>{ftz32(1.0f)}),::native::simd<ftz32,1,FTZ_TEST_ARCH>>);
+    static_assert(std::same_as<decltype(::native::simd<float,2,FTZ_TEST_ARCH>{1.f,2.f}),::native::simd<float,2,FTZ_TEST_ARCH>>);
+    static_assert(std::same_as<decltype(::native::simd<float,3,FTZ_TEST_ARCH>{1.f,2.f,3.f}),::native::simd<float,3,FTZ_TEST_ARCH>>);
     static_assert(!partial_import<int> && !partial_export<int>);
-    static_assert(!std::constructible_from<simd::vec<ftz32,1,FTZ_TEST_ARCH>,std::array<int,1>>);
+    static_assert(!std::constructible_from<::native::simd<ftz32,1,FTZ_TEST_ARCH>,std::array<int,1>>);
 #if defined(__AVX2__) || defined(__ARM_NEON)
-    auto raw=simd::vec<float,4,FTZ_TEST_ARCH>{1.f,2.f,3.f,4.f};
-    auto canonical=simd::vec<ftz32,4,FTZ_TEST_ARCH>{1.f,ftz32(2),3.f,ftz32(4)};
-    static_assert(std::same_as<decltype(raw),simd::vec<float,4,FTZ_TEST_ARCH>>);
-    static_assert(std::same_as<decltype(canonical),simd::vec<ftz32,4,FTZ_TEST_ARCH>>);
+    auto raw=::native::simd<float,4,FTZ_TEST_ARCH>{1.f,2.f,3.f,4.f};
+    auto canonical=::native::simd<ftz32,4,FTZ_TEST_ARCH>{1.f,ftz32(2),3.f,ftz32(4)};
+    static_assert(std::same_as<decltype(raw),::native::simd<float,4,FTZ_TEST_ARCH>>);
+    static_assert(std::same_as<decltype(canonical),::native::simd<ftz32,4,FTZ_TEST_ARCH>>);
     static_assert(recognize_simd<decltype(raw)>::lanes==4);
     static_assert(std::same_as<typename recognize_simd<decltype(canonical)>::value_type,ftz32>);
-    static_assert(std::same_as<decltype(simd::vec{raw}),decltype(raw)>);
-    static_assert(std::same_as<decltype(simd::vec{canonical}),decltype(canonical)>);
-    static_assert(std::same_as<decltype(simd::vec<float,4,FTZ_TEST_ARCH>{raw.value}),decltype(raw)>);
+    static_assert(std::same_as<decltype(::native::simd{raw}),decltype(raw)>);
+    static_assert(std::same_as<decltype(::native::simd{canonical}),decltype(canonical)>);
+    static_assert(std::same_as<decltype(::native::simd<float,4,FTZ_TEST_ARCH>{raw.value}),decltype(raw)>);
     std::array<float,4> out{};raw.storeu(out.data());require(out==std::array<float,4>{1,2,3,4},"raw constructor lane order");
     canonical.storeu(out.data());require(out==std::array<float,4>{1,2,3,4},"mixed constructor lane order");
-    auto a=simd::vec<float,4,FTZ_TEST_ARCH>{std::array<float,4>{5,6,7,8}};
+    auto a=::native::simd<float,4,FTZ_TEST_ARCH>{std::array<float,4>{5,6,7,8}};
     a.storeu(out.data());require(out==std::array<float,4>{5,6,7,8},"array constructor lane order");
-    auto b=simd::load_simd<simd::vec<float,4,FTZ_TEST_ARCH>>(std::span<float,4>(out));b.storeu(out.data());require(out==std::array<float,4>{5,6,7,8},"span factory lane order");
+    auto b=native::load_simd<::native::simd<float,4,FTZ_TEST_ARCH>>(std::span<float,4>(out));b.storeu(out.data());require(out==std::array<float,4>{5,6,7,8},"span factory lane order");
 #endif
   }
   template <std::size_t I> auto mixed_lane() {
@@ -180,8 +180,8 @@ namespace {
     else return float(I+1);
   }
   template <class V> void check_memory() {
-    using F = simd::vec<float,V::lanes,FTZ_TEST_ARCH>;
-    using R = simd::vec<ftz32,V::lanes,FTZ_TEST_ARCH>;
+    using F = ::native::simd<float,V::lanes,FTZ_TEST_ARCH>;
+    using R = ::native::simd<ftz32,V::lanes,FTZ_TEST_ARCH>;
     static_assert(std::same_as<typename F::register_type,V>);
     static_assert(std::same_as<typename R::register_type,V>);
     static_assert(sizeof(F)==sizeof(V) && sizeof(R)==sizeof(V));
@@ -223,8 +223,8 @@ namespace {
     compound=F::from_bits(1u);compound/=ftz32(1);expected(compound,promoted,"raw FTZ scalar /=");
 
 
-    auto per_lane=[]<std::size_t... I>(std::index_sequence<I...>) {return simd::vec<float,sizeof...(I),FTZ_TEST_ARCH>{float(I+1)...};}(std::make_index_sequence<V::lanes>{});
-    auto mixed=[]<std::size_t... I>(std::index_sequence<I...>) {return simd::vec<ftz32,sizeof...(I),FTZ_TEST_ARCH>{mixed_lane<I>()...};}(std::make_index_sequence<V::lanes>{});
+    auto per_lane=[]<std::size_t... I>(std::index_sequence<I...>) {return ::native::simd<float,sizeof...(I),FTZ_TEST_ARCH>{float(I+1)...};}(std::make_index_sequence<V::lanes>{});
+    auto mixed=[]<std::size_t... I>(std::index_sequence<I...>) {return ::native::simd<ftz32,sizeof...(I),FTZ_TEST_ARCH>{mixed_lane<I>()...};}(std::make_index_sequence<V::lanes>{});
     static_assert(std::same_as<decltype(per_lane),F> && std::same_as<decltype(mixed),R>);
     std::array<std::uint32_t,V::lanes> lane_words{};
     for(std::size_t i=0;i<V::lanes;++i)lane_words[i]=std::bit_cast<std::uint32_t>(float(i+1));
@@ -245,25 +245,25 @@ namespace {
       require(v[0]==-123.0f&&v[n+1]==-123.0f,"canonical partial guards");
       for(std::size_t i=0;i<n;++i)require(v[i+1]==u[i+1],"canonical partial payload");
     }
-    auto aligned=simd::load_simd<simd::vec<float,V::lanes,FTZ_TEST_ARCH>>(a.data(),simd::simd_memory<64>{});
-    simd::store_simd(b.data(),aligned,simd::simd_memory<64>{});require(a==b,"aligned helper");
-    simd::store_simd(v.data()+1,simd::load_simd<simd::vec<float,V::lanes,FTZ_TEST_ARCH>>(u.data()+1),simd::simd_memory<1,simd::simd_access::streaming>{});
+    auto aligned=native::load_simd<::native::simd<float,V::lanes,FTZ_TEST_ARCH>>(a.data(),native::simd_memory<64>{});
+    native::store_simd(b.data(),aligned,native::simd_memory<64>{});require(a==b,"aligned helper");
+    native::store_simd(v.data()+1,native::load_simd<::native::simd<float,V::lanes,FTZ_TEST_ARCH>>(u.data()+1),native::simd_memory<1,native::simd_access::streaming>{});
     for(std::size_t i=0;i<V::lanes;++i)require(v[i+1]==u[i+1],"streaming hint ordinary fallback");
-    static_assert(!simd::simd_memory<64,simd::simd_access::streaming>::non_temporal);
+    static_assert(!native::simd_memory<64,native::simd_access::streaming>::non_temporal);
     std::array<ftz32,V::lanes+2> typed{},saved{};
     for(std::size_t i=0;i<V::lanes;++i)typed[i+1]=ftz32(float(i+1));
-    auto typed_value=simd::load_simd<simd::vec<ftz32,V::lanes,FTZ_TEST_ARCH>>(typed.data()+1);
-    simd::store_simd(saved.data()+1,typed_value);
+    auto typed_value=native::load_simd<::native::simd<ftz32,V::lanes,FTZ_TEST_ARCH>>(typed.data()+1);
+    native::store_simd(saved.data()+1,typed_value);
     for(std::size_t i=0;i<V::lanes;++i)require(saved[i+1].to_bits()==typed[i+1].to_bits(),"typed FTZ import/store");
     for(std::size_t count=0;count<=V::lanes;++count) {
-      v.fill(-123);auto part=simd::load_simd_partial<simd::vec<ftz32,V::lanes,FTZ_TEST_ARCH>>(u.data()+1,count);
-      simd::store_simd_partial(v.data()+1,part,count);require(v.front()==-123&&v[count+1]==-123,"helper float tail guards");
-      saved.fill(ftz32(-123));auto tp=simd::load_simd_partial<simd::vec<ftz32,V::lanes,FTZ_TEST_ARCH>>(typed.data()+1,count);
-      simd::store_simd_partial(saved.data()+1,tp,count);require(saved.front()==ftz32(-123)&&saved[count+1]==ftz32(-123),"helper typed tail guards");
+      v.fill(-123);auto part=native::load_simd_partial<::native::simd<ftz32,V::lanes,FTZ_TEST_ARCH>>(u.data()+1,count);
+      native::store_simd_partial(v.data()+1,part,count);require(v.front()==-123&&v[count+1]==-123,"helper float tail guards");
+      saved.fill(ftz32(-123));auto tp=native::load_simd_partial<::native::simd<ftz32,V::lanes,FTZ_TEST_ARCH>>(typed.data()+1,count);
+      native::store_simd_partial(saved.data()+1,tp,count);require(saved.front()==ftz32(-123)&&saved[count+1]==ftz32(-123),"helper typed tail guards");
       for(std::size_t i=0;i<count;++i)require(saved[i+1]==typed[i+1]&&v[i+1]==u[i+1],"helper tail payload");
     }
-    simd::store_simd_partial(static_cast<float*>(nullptr),simd::load_simd_partial<simd::vec<ftz32,V::lanes,FTZ_TEST_ARCH>>(static_cast<ftz32 const*>(nullptr),0),0);
-    auto bad=F::from_bits(0x80000001u);simd::store_simd(typed.data()+1,bad);
+    native::store_simd_partial(static_cast<float*>(nullptr),native::load_simd_partial<::native::simd<ftz32,V::lanes,FTZ_TEST_ARCH>>(static_cast<ftz32 const*>(nullptr),0),0);
+    auto bad=F::from_bits(0x80000001u);native::store_simd(typed.data()+1,bad);
     for(std::size_t i=0;i<V::lanes;++i)require(typed[i+1].to_bits()==0x80000000u,"raw-to-typed store canonicalizes");
     auto f=F::load(a.data());auto result=fma(f,2.0f,1.0f)+f*f;
     result.store(b.data());for(std::size_t i=0;i<V::lanes;++i)require(b[i]==a[i]*2+1+a[i]*a[i],"raw arithmetic");
@@ -275,7 +275,7 @@ namespace {
   // every selected tiny-result sign, and both sides of minimum normal. Expected
   // bits follow from the integer difference, independently of the math core.
   template <class V> void check_add_boundaries() {
-    using R = simd::vec<ftz32,V::lanes,FTZ_TEST_ARCH>;
+    using R = ::native::simd<ftz32,V::lanes,FTZ_TEST_ARCH>;
     std::vector<std::uint32_t> offsets;
     for (std::uint32_t k=0;k<=4096;++k) {
       offsets.push_back(k); offsets.push_back(0x00800000u-k);
@@ -298,7 +298,7 @@ namespace {
       expected(y-x,positive,"tiny subtraction positive");
       expected(x+(-y),negative,"tiny addition negative");
       expected(y+(-x),positive,"tiny addition positive");
-      auto wx=simd::broadcast<R,3>(x),wy=simd::broadcast<R,3>(y);
+      auto wx=native::broadcast<R,3>(x),wy=native::broadcast<R,3>(y);
       auto sum=wx+(-wy),difference=wy-wx;
       for (std::size_t i=0;i<3;++i) {
         expected(sum.registers[i],negative,"wide tiny addition");
@@ -307,7 +307,7 @@ namespace {
     }
   }
   template <class V> std::size_t check() {
-    using R = simd::vec<ftz32,V::lanes,FTZ_TEST_ARCH>;
+    using R = ::native::simd<ftz32,V::lanes,FTZ_TEST_ARCH>;
     static_assert(sizeof(R) == sizeof(V));
     static_assert(std::is_convertible_v<float,R> && std::is_convertible_v<V,R> && std::is_convertible_v<R,V>);
     static_assert(std::same_as<decltype(R{}+1.0f),R> && std::same_as<decltype(1.0f+R{}),R>);
@@ -356,7 +356,7 @@ namespace {
       require(out.front()==0xdeadbeefu && out[count+1]==0xdeadbeefu,"partial store guard");
       for(std::size_t j=0;j<count;++j)require(out[j+1]==in[j+1],"partial payload");
     }
-    simd::wide<R,3> a{{R(1),R(2),R(3)}},b{{R(2),R(3),R(4)}};
+    ::native::wide<R,3> a{{R(1),R(2),R(3)}},b{{R(2),R(3),R(4)}};
     auto result=fma(a,b,a)+1.0f;
     for(std::size_t j=0;j<3;++j) {
       std::array<std::uint32_t,R::lanes> want;want.fill(std::bit_cast<std::uint32_t>(float((j+1)*(j+3)+1)));
@@ -377,27 +377,27 @@ int main(int argc,char ** argv) {
       require(probe_ftz32_cpu().admitted()==expected_admission,"compiled arithmetic profile admission");
       if (expected_admission) {
       check_construction();
-      rows=check<simd::vec<float,1,FTZ_TEST_ARCH>>();
-      check_memory<simd::vec<float,1,FTZ_TEST_ARCH>>();
+      rows=check<::native::simd<float,1,FTZ_TEST_ARCH>>();
+      check_memory<::native::simd<float,1,FTZ_TEST_ARCH>>();
 #if defined(__AVX2__) || defined(__ARM_NEON)
-      require(check<simd::vec<float,4,FTZ_TEST_ARCH>>()==rows,"four row count"); check_memory<simd::vec<float,4,FTZ_TEST_ARCH>>();
+      require(check<::native::simd<float,4,FTZ_TEST_ARCH>>()==rows,"four row count"); check_memory<::native::simd<float,4,FTZ_TEST_ARCH>>();
 #endif
 #if defined(__AVX2__)
-      require(check<simd::vec<float,8,FTZ_TEST_ARCH>>()==rows,"eight row count"); check_memory<simd::vec<float,8,FTZ_TEST_ARCH>>();
+      require(check<::native::simd<float,8,FTZ_TEST_ARCH>>()==rows,"eight row count"); check_memory<::native::simd<float,8,FTZ_TEST_ARCH>>();
 #endif
 #if defined(__AVX512F__) && defined(__AVX512DQ__)
-      require(check<simd::vec<float,16,FTZ_TEST_ARCH>>()==rows,"sixteen row count"); check_memory<simd::vec<float,16,FTZ_TEST_ARCH>>();
+      require(check<::native::simd<float,16,FTZ_TEST_ARCH>>()==rows,"sixteen row count"); check_memory<::native::simd<float,16,FTZ_TEST_ARCH>>();
 #endif
       if(FTZ_FP32_HARDWARE_FTZ==0 || mode=="flush") {
-        check_functions<simd::vec<float,1,FTZ_TEST_ARCH>>();
+        check_functions<::native::simd<float,1,FTZ_TEST_ARCH>>();
 #if defined(__AVX2__) || defined(__ARM_NEON)
-        check_functions<simd::vec<float,4,FTZ_TEST_ARCH>>();
+        check_functions<::native::simd<float,4,FTZ_TEST_ARCH>>();
 #endif
 #if defined(__AVX2__)
-        check_functions<simd::vec<float,8,FTZ_TEST_ARCH>>();
+        check_functions<::native::simd<float,8,FTZ_TEST_ARCH>>();
 #endif
 #if defined(__AVX512F__) && defined(__AVX512DQ__)
-        check_functions<simd::vec<float,16,FTZ_TEST_ARCH>>();
+        check_functions<::native::simd<float,16,FTZ_TEST_ARCH>>();
 #endif
       }
       }
