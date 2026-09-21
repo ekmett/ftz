@@ -174,11 +174,12 @@ jobs:
       - name: Build and install SIMD
         run: |
           compiler=clang++
-          launcher="$(command -v python3);$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
           extra=()
           if [[ "$RUNNER_OS" == Windows ]]; then
             compiler=clang-cl
             launcher="python;$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
+          else
+            launcher="$(command -v python3);$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
           fi
           if [[ "$RUNNER_OS" != macOS ]]; then extra+=(-DCMAKE_LINKER_TYPE=LLD); fi
           cmake -S build/deps/simd -B build/simd -G Ninja \
@@ -198,11 +199,12 @@ jobs:
       - name: Build and test FTZ
         run: |
           compiler=clang++
-          launcher="$(command -v python3);$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
           extra=()
           if [[ "$RUNNER_OS" == Windows ]]; then
             compiler=clang-cl
             launcher="python;$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
+          else
+            launcher="$(command -v python3);$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
           fi
           if [[ "$RUNNER_OS" != macOS ]]; then extra+=(-DCMAKE_LINKER_TYPE=LLD); fi
           cmake -S . -B build/ftz -G Ninja \
