@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
 // SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
 #include <array>
+#include <bit>
 #include <concepts>
 #include <cstdint>
 #include <type_traits>
@@ -44,7 +45,14 @@ template<class F> constexpr bool types() {
 }
 static_assert(types<ftz::m32>() && types<ftz::h32>());
 
-int main() {
+static_assert(std::countl_zero(std::uint32_t{}) == 32);
+static_assert(std::countr_zero(std::uint32_t{}) == 32);
+
+int main(int argc, char **) {
+  // Exercise <bit> from a profiled importer of the baseline PCH-built provider.
+  // CTest invokes this fixture with no arguments, so argc supplies runtime one.
+  auto one = static_cast<std::uint32_t>(argc);
+  if (std::countl_zero(one) != 31 || std::countr_zero(one) != 0) return 2;
   ftz::native_fp32_scope region(ftz::native_fp32_mode::gradual);
   using V = native::simd<ftz::m32, 4, arch>;
   std::array<ftz::m32, 4> input{1.f, 2.f, 3.f, 4.f}, output{};
