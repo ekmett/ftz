@@ -23,6 +23,22 @@ The maintained suites cover:
 - Module type identity, family-typed architecture arguments, scalar mask traits
   and the provider's default architecture.
 
+The exponential contract fixture checks 299,247 inputs, including dense binary32
+windows at both output cutoffs and every reduction transition. Scalar and SIMD
+results under gradual and flush CPU controls match an independent graph oracle.
+The recorded Apple M3 and AVX2 packets have the same SHA-256:
+`64bc518d4fae9be61ea826d2795a8933423fb6f5dc0e81a43d3d647076c8fd41`.
+The [DXC → SPIR-V → Metal fixture](../tests/exp_shader/README.md) under both
+shader policies matches that bank on
+Apple M3, with NaN payload differences permitted. This is sampled cross-platform
+agreement, not an MPFR accuracy bound or an exhaustive proof for every input.
+Actual Windows and AVX-512 runtime qualification is separate from cross-compilation.
+
+The focused exp and SIMD suites pass. The general ARM/AVX2 FTZ scaling wrappers
+still need their own implementation for the full scaling suite; the exp-specific
+factor is only valid inside exp's chosen range. See the
+[ordered kernel plan](math-kernels.md#next-operations).
+
 The common-width numerical packets have these reference identities:
 
 | Packet | Binary32 words | SHA-256 |

@@ -38,6 +38,79 @@ namespace ftz::detail::native {
   }
 }
 
+// FTZ owns one host/shader exponential graph. Its early overflow endpoint
+// matches native::exp<true>; reconstruction alone is instruction-specific.
+namespace ftz::detail::native {
+  namespace detail {
+    template <float_register V>
+    native_inline V exp_factor(V biased) noexcept {
+#if defined(__aarch64__) || defined(_M_ARM64)
+      // FCVTZU defines NaN and negative results as zero. No NaN admission mask
+      // is needed: the polynomial's NaN survives the final multiplication.
+      return V::from_bits(::native::fcvtzu(biased).template left<23>());
+#elif defined(__x86_64__) || defined(_M_X64)
+      // CVTT's indefinite result is INT_MIN; PMAXSD maps it and negative
+      // exponent fields to zero. This private reconstruction is not scaleb.
+      if constexpr (V::lanes == 1) {
+        auto const index = _mm_cvttss_si32(_mm_set_ss(biased.to_native()));
+        return V::from_bits(std::uint32_t(index > 0 ? index : 0) << 23);
+      } else if constexpr (V::lanes == 2 || V::lanes == 3) {
+        return V::from_storage(exp_factor(biased.to_storage()));
+      } else if constexpr (V::lanes == 4) {
+        auto const index = _mm_max_epi32(_mm_cvttps_epi32(biased.to_native()), _mm_setzero_si128());
+        return V::from_native(_mm_castsi128_ps(_mm_slli_epi32(index, 23)));
+      } else if constexpr (V::lanes == 8) {
+        auto const index = _mm256_max_epi32(_mm256_cvttps_epi32(biased.to_native()), _mm256_setzero_si256());
+        return V::from_native(_mm256_castsi256_ps(_mm256_slli_epi32(index, 23)));
+      }
+#else
+      // The portable conversion keeps its finite, representable precondition.
+      auto const safe = select((biased >= V(0.f)) & (biased <= V(254.f)), biased, V(0.f));
+      return V::from_bits(trig_conversion<V>::integer(safe).template left<23>());
+#endif
+    }
+  }
+  template <float_register V, std::size_t N>
+  native_flatten native_inline std::array<V, N> exp_ftz(std::array<V, N> const & input) noexcept {
+    if constexpr (N == 0) return {};
+    else {
+      auto const & [...x] = input;
+      auto const [...active] = std::array{(!(x < V(-87.33654022216796875f)))...};
+      // Classify independently of the arithmetic chain. This is the last
+      // binary32 input before the reducer produces n=128. NaNs stay on the
+      // arithmetic path without a separate comparison or restoration select.
+      auto const [...overflow] = std::array{(x > V(88.37625885009765625f))...};
+      auto const [...in_range] = std::array{(active & !overflow)...};
+      auto const [...replacement] = std::array{select(overflow,
+        V(std::bit_cast<float>(0x7f800000u)), V(0.f))...};
+      auto [...r] = std::array{x...};
+      auto const [...n] = std::array{round_even(r * V(1.4426950408889634f))...};
+      ((r = fma(n, V(-0x1.62e400p-1f), r)), ...);
+      ((r = fma(n, V(-0x1.7f7d1cp-20f), r)), ...);
+      auto [...y] = std::array{fma(r, V(0x1.a1d714d7b1510dp-13f), V(0x1.6da756e670ea6p-10f))...};
+      ((y = fma(r, y, V(0x1.11105b3161a6fp-7f))), ...);
+      ((y = fma(r, y, V(0x1.5554649b7487fp-5f))), ...);
+      ((y = fma(r, y, V(0x1.555555c673724p-3f))), ...);
+      ((y = fma(r, y, V(0x1.0000005c8dd89p-1f))), ...);
+      auto const one = V(1.f);
+      ((y = fma(r, y, one)), ...);
+      ((y = fma(r, y, one)), ...);
+      if constexpr (requires { masked_scaleb_zero(active...[0], y...[0], n...[0]); }) {
+        return {{masked_scaleb(in_range, replacement, y, n)...}};
+      } else {
+        // Active finite exponents are [-126,127]. The cutoff excludes the
+        // minimum-normal rounding strip, so this exact normal scaling product
+        // needs neither split factors nor per-stage/output FTZ repair.
+        auto const [...factor] = std::array{detail::exp_factor(n + V(127.f))...};
+        ((y = y * factor), ...);
+        return {{select(in_range, y, replacement)...}};
+      }
+    }
+  }
+  template <float_register V>
+  native_inline V exp_ftz(V input) noexcept { return exp_ftz(std::array{input})[0]; }
+}
+
 // Altered source: paired polynomial and reducer with signed input FTZ,
 // explicit tiny-input selection and bitwise reconstruction. Notices are retained below.
 // Require binary32 RNE, native fused fma and no implicit expression contraction.

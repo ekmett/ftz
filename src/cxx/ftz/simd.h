@@ -903,9 +903,8 @@ export namespace ftz {
       if constexpr (N == 0) return {};
       else {
         auto const & [...input_register] = input;
-        using ::native::exp;
-        auto const [...value] = exp(
-          std::array{detail::ftz32_unwrap(input_register)...}, std::true_type{});
+        auto const [...value] = native::exp_ftz(
+          std::array{detail::ftz32_unwrap(input_register)...});
         return std::array{detail::ftz32_wrap<R>(value)...};
       }
     }

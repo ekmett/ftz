@@ -23,8 +23,9 @@ own their entry points and choose the compiled policy with defines.
 `native` owns native registers, masks, ISA values and generic `wide`
 forwarding. FTZ supplies an element customization once for each arithmetic
 policy; that customization composes with the supported native architectures.
-FTZ imports `native.math` for the common exponential kernel and `native.scalar`
-for scalar storage. I keep that dependency one way. Array math kernels expose independent register
+FTZ imports native operations and scalar storage, and owns the polynomial graphs
+and range policies required by its arithmetic contract. The dependency remains
+one way. Array math kernels expose independent register
 chains without depending on the `wide` container itself.
 
 Manual and hardware policies describe the same arithmetic results under their

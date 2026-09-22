@@ -263,8 +263,8 @@ namespace ftz { namespace detail {
   native_nodiscard native_inline native_const unsigned int ftz32_log1p(unsigned int bits){return ::ftz::detail::math::log1p_words<Hardware>(bits).bits;}
   native_nodiscard native_inline native_const unsigned int ftz32_exp(unsigned int bits){
 #ifdef __cplusplus
-    return ::ftz::detail::math::fp32_encode(::native::exp(
-      ftz::detail::native::fp32x1(::ftz::detail::math::fp32_decode(bits)), std::true_type{}).value);
+    return ::ftz::detail::math::fp32_encode(ftz::detail::native::exp_ftz(
+      ftz::detail::native::fp32x1(::ftz::detail::math::fp32_decode(bits))).value);
 #else
     unsigned int magnitude=bits&0x7fffffffu;
     if(magnitude>ftz32_infinity)return ftz32_nan;

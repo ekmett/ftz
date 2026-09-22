@@ -4,7 +4,7 @@ I want binary32 arithmetic whose operation graph is explicit: where rounding
 happens, when subnormals become signed zero, and which operations are fused.
 FTZ gives that contract a type, in C++26 and HLSL 2021.
 
-I keep arithmetic policy separate from register layout. [SIMD](https://github.com/ekmett/simd)
+I keep arithmetic policy separate from register layout. [native](https://github.com/ekmett/native)
 owns vectors, masks, ISA values and wide register packs. FTZ supplies the
 element type and its operations. Changing the number of registers does not
 change the arithmetic policy.
@@ -62,10 +62,11 @@ input banks and devices were checked, including the limits of packet equality.
 
 ## Build and read
 
-The native build uses Clang 23, CMake 4.4, Ninja and an installed SIMD package.
+The native build uses Clang 23, CMake 4.4, Ninja and an installed native package.
 Start with the [build and module guide](docs/building.md); compiler, runtime,
 exception settings and profile selection must agree across the dependency graph.
 
+- [Math kernels and platform work](docs/math-kernels.md)
 - [HLSL headers and device policy](docs/shaders.md)
 - [Source and module boundaries](src/README.md)
 - [Compiled API examples](tests/api/README.md)

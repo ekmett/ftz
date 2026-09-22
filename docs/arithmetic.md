@@ -3,7 +3,7 @@
 I want an arithmetic policy to say what each operation means, including the
 awkward cases at zero and the normal/subnormal boundary. I keep that policy in
 the element type. I leave register width and instruction selection to
-[SIMD](https://github.com/ekmett/simd).
+[native](https://github.com/ekmett/native).
 
 ## Policies and representation
 
@@ -66,6 +66,9 @@ explicit conversion first. C++ conditional expressions and `std::common_type`
 can still choose `float` for two different policy types: retaining implicit
 conversion to float makes those language-level escapes unavoidable. Keep both
 branches of a numerical conditional in the same type.
+
+See [math kernels and platform work](math-kernels.md) for exponential
+reconstruction and the ordered plan for the remaining kernels.
 
 ## CPU environment and admission
 

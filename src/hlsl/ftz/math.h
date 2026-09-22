@@ -4,12 +4,14 @@
 
 namespace ftz { namespace detail { namespace math {
 
-  // The cutoff proof excludes the minimum-normal rounding strip for finite
-  // input. Two normal-factor products and signed FTZ therefore agree with the
-  // reference scaler. Tiny inputs round to exactly one without an entry mask.
+  // The host and shader use the same early endpoints and degree-seven graph.
+  // The active interval has n in [-126,127], and excludes the minimum-normal
+  // rounding strip. A single normal factor therefore needs no output FTZ repair.
   uint2 exp_value(unsigned int bits) {
     if ((bits & 0x7f800000u) == 0x7f800000u) return uint2(0u, 0u);
-    precise float x = min(max(asfloat(bits), asfloat(0xc2d00000u)), asfloat(0x42b17218u));
+    precise float x = asfloat(bits);
+    bool active = !(x < asfloat(0xc2aeac4fu));
+    bool overflow = x > asfloat(0x42b0c0a5u);
     precise float product = x * asfloat(0x3fb8aa3bu);
     precise float n = round(product);
     precise float first = fp32_fma<false>(n, asfloat(0xbf317200u), x);
@@ -21,14 +23,13 @@ namespace ftz { namespace detail { namespace math {
     y = fp32_fma<false>(r, y, 0.5f);
     y = fp32_fma<false>(r, y, 1.0f);
     y = fp32_fma<false>(r, y, 1.0f);
-    if (!(n >= -150.0f && n <= 128.0f)) return uint2(0u, 0u);
-    precise float normal_index = min(max(n, -126.0f), 127.0f);
-    precise float first_index = n - normal_index;
-    float first_factor = asfloat((unsigned int)((int)first_index + 127) << 23);
-    float second_factor = asfloat((unsigned int)((int)normal_index + 127) << 23);
-    precise float scaled = y * first_factor;
-    precise float value = scaled * second_factor;
-    return uint2(asuint(fp32_ftz(value)), 1u);
+    // HLSL float-to-uint conversion has no ARM FCVTZU saturation contract.
+    // Keep only this conversion bounded; range masks do not feed the reducer.
+    precise float biased = active && !overflow ? n + 127.0f : 0.0f;
+    float factor = asfloat((unsigned int)biased << 23);
+    precise float scaled = y * factor;
+    precise float value = overflow ? asfloat(0x7f800000u) : active ? scaled : 0.0f;
+    return uint2(asuint(value), 1u);
   }
 
 }}}

@@ -1,19 +1,19 @@
 # Building and consuming FTZ
 
-I build FTZ against an installed [SIMD](https://github.com/ekmett/simd) package.
+I build FTZ against an installed [native](https://github.com/ekmett/native) package.
 I keep the producer and every consuming library on one compiler/runtime
 configuration; incompatible BMIs are not an application boundary.
 
 ## Native packages
 
-Use Clang 23, CMake 4.4 and Ninja, with an installed SIMD package. Both packages
+Use Clang 23, CMake 4.4 and Ninja, with an installed native package. Both packages
 must use compatible compiler, standard-library, exception and floating-point
 settings. CMake rebuilds consumer BMIs from installed module sources. Keep one
 consistent dependency configuration through an application and its libraries.
 
 ```sh
 cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ \
-  -DCMAKE_PREFIX_PATH=/path/to/simd -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH=/path/to/native -DCMAKE_BUILD_TYPE=Release \
   -DFTZ_ENABLE_PCH=ON -DFTZ_ENABLE_IPO=ON
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
@@ -36,9 +36,9 @@ native_target_profile(example AVX2)
 ```
 
 `ftz::ftz` supplies the `ftz` and `ftz.controls` modules and static archive. It
-depends on SIMD's `native` provider and headers. The provider supplies `native.math`
-for FTZ's exponential kernel without adding optional ISA requirements.
-Numerical consumers link
+depends on native's module provider and headers. FTZ owns its exponential graph
+and uses the provider's register operations without adding optional ISA
+requirements. Numerical consumers link
 `native::native` and import `native`; import `native.math` when using raw SIMD math.
 The FTZ numerical overloads are exported by `ftz`. ISA values select vector
 families within that hub. The profile target aliases `native::avx2`, `native::avx512` and `native::neon`
@@ -146,7 +146,7 @@ a documentation-only build:
 
 ```sh
 cmake -S . -B build/docs -G Ninja -DFTZ_BUILD_HOST=OFF -DFTZ_BUILD_DOCS=ON \
-  -DCMAKE_PREFIX_PATH=/path/to/simd
+  -DCMAKE_PREFIX_PATH=/path/to/native
 cmake --build build/docs --target ftz_docs
 ```
 
