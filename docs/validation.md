@@ -34,10 +34,19 @@ Apple M3, with NaN payload differences permitted. This is sampled cross-platform
 agreement, not an MPFR accuracy bound or an exhaustive proof for every input.
 Actual Windows and AVX-512 runtime qualification is separate from cross-compilation.
 
-The focused exp and SIMD suites pass. The general ARM/AVX2 FTZ scaling wrappers
-still need their own implementation for the full scaling suite; the exp-specific
-factor is only valid inside exp's chosen range. See the
-[ordered kernel plan](math-kernels.md#next-operations).
+General FTZ scaling now has its own vector integer exponent graph, including
+signed flushing, nonfinite cases and the minimum-normal rounding boundary.
+On Apple AArch64, the unchanged 40,600-row independent dyadic oracle passes
+3,572,844 word checks per admitted run across widths 1, 2, 3 and 4: m32 under
+gradual and flush controls, and h32 under flush controls. The h32 gradual
+case rejects admission. Merge/zero masks retain inactive words exactly, and raw
+scaling forwarders are unavailable when the target has no scaling instruction.
+Conversion noexcept and discarded-result side-effect checks pass for both
+policies; this dependency build disables exceptions, so it does not exercise
+throw/unwind paths. The complete local suites pass 23/23 on Apple AArch64
+and 24/24 on Linux AVX2, including gradual, DAZ-only, FTZ-only and flushing x86
+scaling checks. Actual AVX-512 and Windows execution remain separate qualification
+gates. See the [kernel plan](math-kernels.md#next-operations).
 
 The common-width numerical packets have these reference identities:
 

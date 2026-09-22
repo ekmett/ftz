@@ -9,6 +9,9 @@ NaN signs and payloads are outside the contract. Signed zeros remain exact.
 canonical import, masked tails, empty/one/odd register counts, and 96-value
 wide transcendental shapes. `scaleb` retains the independent integer dyadic
 reference, special exponents, merge/zero masks and four x86 denormal modes.
+It exercises every supported width among 1, 2, 3, 4, 8 and 16. Raw scaling
+and raw-base/FTZ-exponent forwarding are present only when the selected target
+has a native scaling instruction; typed FTZ scaling remains available.
 `noexcept_ftz` retains discarded-result conversion side effects and tests real
 exception propagation/cleanup when `FTZ_ENABLE_EXCEPTIONS=ON`.
 

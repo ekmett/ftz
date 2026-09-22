@@ -195,6 +195,8 @@ namespace {
 int main() {
   scalar_checks();
   vector_checks<1>();
+  vector_checks<2>();
+  vector_checks<3>();
 #if defined(__AVX2__) || defined(__ARM_NEON)
   vector_checks<4>();
 #endif

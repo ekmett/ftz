@@ -1,7 +1,10 @@
 # FTZ profiles against the retained baseline
 
-`baseline.bin` remains the original 2,208-word (96 values, 23 columns) capture.
-It is not regenerated for the downstream migration. The fixture covers scalar
+`baseline.bin` contains 2,208 words (96 values, 23 columns). The shared exp
+overflow cutoff gives positive infinity for input `0x42b17217` at lane 24 in
+scalar and wide exp/expm1 (columns 2, 3, 10 and 11).
+The dense exp contract fixture independently checks both cutoff signs under
+m32 gradual/flush and h32 flush controls. The profile fixture covers scalar
 FTZ functions, wide96 exp/expm1/sincos, native arithmetic and masks, raw exp,
 integer transforms, masked scaling, guarded-page tails and null empty inputs.
 NaNs are normalized only in numerical columns; every integer bit stays exact.

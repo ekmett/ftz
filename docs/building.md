@@ -169,8 +169,10 @@ Generated HTML stays in the build and deployment artifacts, outside the source t
 ## Hosted native package checks
 
 The [Native packages workflow](https://github.com/ekmett/ftz/blob/main/.github/workflows/native.yml)
-runs the same package, numerical and relocated module-consumer checks on five
-standard GitHub-hosted runner labels:
+runs package, numerical and relocated module-consumer checks on pull requests
+and manual dispatch. The default pair is Linux ARM64 and Windows ARM64; routine
+Mac and x86 Linux work runs locally. Main pushes do not launch this build matrix.
+A manual dispatch with `full_matrix` also includes the other three platforms:
 
 | Runner | Native profile |
 | --- | --- |
@@ -188,7 +190,7 @@ that runner and revision, not every CPU sharing its architecture. AVX-512 and GP
 
 Windows uses native, checksum-pinned LLVM 23.1.1, CMake 4.4.3 and Ninja 1.13.2
 with the matching Visual Studio SDK environment. The setup action is copied from
-SIMD `8f69034`; the separately pinned numerical dependency is unchanged.
+native `8f69034`; the numerical dependency has its own explicit revision pin.
 
 Intel macOS is deferred until a qualified LLVM 23 toolchain artifact is available.
 The hosted image supplies older Clang versions, Homebrew has no Intel LLVM 23

@@ -187,10 +187,18 @@ namespace {
   }
   template<std::size_t N> std::size_t check_width(std::vector<row> const & rows,bool daz,bool output_flush,bool raw_before_rounding,bool admitted) {
     using F=::native::simd<float,N,FTZ_TEST_ARCH>;using T=::native::simd<ftz32,N,FTZ_TEST_ARCH>;using M=::native::simd<mask32,N,FTZ_TEST_ARCH>;
-    auto checked=check_mask<F,M>(rows,daz,output_flush,raw_before_rounding);
+    // Raw scaleb is an ISA instruction surface. An FTZ exponent must not
+    // fabricate it on targets where the underlying raw operation is absent.
+    constexpr bool raw_scaling=requires(F raw) { scaleb(raw,raw); };
+    constexpr bool forwarded_scaling=requires(F raw,T exponent) { scaleb(raw,exponent); };
+    static_assert(raw_scaling==forwarded_scaling);
+    static_assert(requires(M mask,F raw,T exponent) { masked_scaleb(mask,raw,raw,exponent); } == raw_scaling);
+    static_assert(requires(M mask,F raw,T exponent) { masked_scaleb_zero(mask,raw,exponent); } == raw_scaling);
+    std::size_t checked=0;
+    if constexpr(raw_scaling) checked+=check_mask<F,M>(rows,daz,output_flush,raw_before_rounding);
     if(admitted) checked+=check_mask<T,M>(rows,daz,output_flush,raw_before_rounding);
     if constexpr(!std::same_as<typename F::mask,M>) {
-      checked+=check_mask<F,typename F::mask>(rows,daz,output_flush,raw_before_rounding);
+      if constexpr(raw_scaling) checked+=check_mask<F,typename F::mask>(rows,daz,output_flush,raw_before_rounding);
       if(admitted) checked+=check_mask<T,typename F::mask>(rows,daz,output_flush,raw_before_rounding);
     }
     return checked;
@@ -221,6 +229,8 @@ int main(int argc,char ** argv) {
         require(admitted==(!FTZ_FP32_HARDWARE_FTZ||mode=="flush"),"FP profile admission");
       }
       checked+=check_width<1>(rows,daz,output_flush,raw_before,admitted);
+      checked+=check_width<2>(rows,daz,output_flush,raw_before,admitted);
+      checked+=check_width<3>(rows,daz,output_flush,raw_before,admitted);
 #if defined(__AVX2__) || defined(__ARM_NEON)
       checked+=check_width<4>(rows,daz,output_flush,raw_before,admitted);
 #endif

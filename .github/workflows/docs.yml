@@ -23,11 +23,11 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - name: Check out SIMD headers
+      - name: Check out native headers
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          repository: ekmett/simd
-          ref: a8a98407844041fc0480da6a7e3ad635f2678e52
+          repository: ekmett/native
+          ref: aa717e5740c43e22aba78bd7c7de962fd0a549d5
           path: build/deps/simd
           persist-credentials: false
       - name: Install documentation tools

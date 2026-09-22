@@ -44,43 +44,42 @@ namespace ftz::detail {
         output[lane] = ftz32_repair_lane<Repair>(inputs, lane, std::index_sequence_for<X...>{});
     return B::decode(U::load(output.data()));
   }
-  native_nodiscard native_inline native_const std::uint32_t ftz32_scaleb_repair(
-      std::uint32_t result, std::uint32_t value, std::uint32_t exponent) noexcept {
-    // All NaN inputs have the raw instruction's quiet-NaN value semantics for
-    // infinite exponents, without changing the supplied input words.
-    if ((value & 0x7fffffffu) > 0x7f800000u &&
-        (exponent & 0x7fffffffu) == 0x7f800000u)
-      return (exponent & 0x80000000u) != 0u ? 0u : 0x7f800000u;
-    unsigned int biased = (value >> 23) & 0xffu;
-    if (biased == 0u || biased == 255u || (value & 0x007fffffu) != 0x007fffffu)
-      return result;
-    // Only this exact halfway value rounds from a tiny mathematical result to
-    // minimum normal. Compare the floor interval without converting an arbitrary
-    // exponent to an integer; native nonfinite results retain their raw behavior.
-    float shift = ::ftz::detail::math::fp32_decode(exponent);
-    float lower = -static_cast<float>(biased);
-    return shift >= lower && shift < lower + 1.0f ?
-      (value & 0x80000000u) | 0x00800000u : result;
-  }
-  template <bool Hardware, class M, class V>
-  native_nodiscard native_inline native_const V ftz32_scaled_result(
-      M active, V result, V value, V exponent) noexcept {
+  // General FTZ scaling owns its semantic graph: raw native scaling exists
+  // only where the target has an instruction. Normal bases need no arithmetic
+  // on their significands, including the sole tiny result that rounds to normal.
+  template <class V>
+  native_nodiscard native_inline native_const V ftz32_vector_scaleb(V value, V exponent) noexcept {
     using B = ftz32_bridge<V>; using U = ftz32_words<V>;
-    U active_bits = mask_bits<std::uint32_t>(active), bits = B::encode(result);
-    if constexpr(!Hardware) {
-    U tiny = mask_bits<std::uint32_t>(U(0x00800000u) > (bits & U(0x7fffffffu)));
-    bits = bits & ((active_bits & tiny & U(0x007fffffu)) ^ U(0xffffffffu));
-    result = B::decode(bits);
-    }
-    // No scalar extraction on the ordinary path. Native FTZ may discard the
-    // rounding-up boundary above; other scaling and special values stay native.
-    U value_bits = B::encode(value);
-    U boundary = mask_bits<std::uint32_t>(U(0x00800000u) > (bits & U(0x7fffffffu))) &
-      mask_bits<std::uint32_t>((value_bits & U(0x007fffffu)) == U(0x007fffffu));
-    U nan_infinite = mask_bits<std::uint32_t>((value_bits & U(0x7fffffffu)) > U(0x7f800000u)) &
-      mask_bits<std::uint32_t>((B::encode(exponent) & U(0x7fffffffu)) == U(0x7f800000u));
-    return ftz32_repair<ftz32_scaleb_repair>(result,active_bits & (boundary | nan_infinite),
-      result,value,exponent);
+    using I = typename V::template rebind<std::int32_t>;
+    U x = B::encode(value), y = ftz32_import_words(B::encode(exponent));
+    U magnitude = x & U(0x7fffffffu), shift_magnitude = y & U(0x7fffffffu);
+    U sign = x & U(0x80000000u), fraction = x & U(0x007fffffu);
+    // +/-256 settles every finite FTZ base. Clamp by word magnitude before
+    // floor/conversion, so even infinities and NaNs have a representable integer
+    // intermediate. Their value semantics are selected independently below.
+    U bounded = select(shift_magnitude < U(0x43800000u), y,
+      (y & U(0x80000000u)) | U(0x43800000u));
+    I shift = convert<std::int32_t>(floor(B::decode(bounded)));
+    U biased = magnitude.template right<23>();
+    I adjusted = I::from_native(std::bit_cast<typename I::native_type>(biased.to_native())) + shift;
+    U fields = U::from_native(std::bit_cast<typename U::native_type>(adjusted.to_native()));
+    U result = select((adjusted > I(0)) & (adjusted < I(255)),
+      fields.template left<23>() | fraction,
+      select(adjusted > I(254), U(0x7f800000u), U(0)));
+    // A maximum significand at adjusted exponent zero is exactly halfway
+    // below minimum normal; nearest-even rounds upward before signed flushing.
+    result = select((adjusted == I(0)) & (fraction == U(0x007fffffu)), U(0x00800000u), result) | sign;
+    result = select((magnitude == U(0)) | (magnitude == U(0x7f800000u)), x, result);
+    result = select(magnitude > U(0x7f800000u), x | U(0x00400000u), result);
+    U upward = select(magnitude == U(0), U(0x7fc00000u), sign | U(0x7f800000u));
+    U downward = select(magnitude == U(0x7f800000u), U(0x7fc00000u), sign);
+    // Infinite exponents treat every NaN base as quiet: +infinity gives
+    // +infinity, -infinity gives +zero, independent of NaN sign/payload.
+    upward = select(magnitude > U(0x7f800000u), U(0x7f800000u), upward);
+    downward = select(magnitude > U(0x7f800000u), U(0), downward);
+    result = select(y == U(0x7f800000u), upward, result);
+    result = select(y == U(0xff800000u), downward, result);
+    return B::decode(select(shift_magnitude > U(0x7f800000u), y | U(0x00400000u), result));
   }
   template <bool Hardware, class V> native_nodiscard native_inline native_const V ftz32_vector_add(V a, V b) noexcept {
     V r = a + b;
@@ -376,8 +375,8 @@ export namespace native {
           noexcept(scaling_exponent(exponent))) {
       simd imported_prior(prior), imported_value(value);
       V shift = scaling_exponent(exponent);
-      V result = masked_scaleb(active, imported_prior.value_, imported_value.value_, shift);
-      return {canonical{},::ftz::detail::ftz32_scaled_result<Hardware>(active,result,imported_value.value_,shift)};
+      V result = ::ftz::detail::ftz32_vector_scaleb(imported_value.value_, shift);
+      return {canonical{},select(active,result,imported_prior.value_)};
     }
     /// \brief Scales active lanes by 2^floor(exponent) and returns positive zero in inactive lanes.
     template <class M, class A, class E>
@@ -386,8 +385,8 @@ export namespace native {
     native_nodiscard friend native_inline simd masked_scaleb_zero(
         M active, A value, E exponent) noexcept(noexcept(scaling_exponent(exponent))) {
       V shift = scaling_exponent(exponent);
-      V result = masked_scaleb_zero(active,value.value_,shift);
-      return {canonical{},::ftz::detail::ftz32_scaled_result<Hardware>(active,result,value.value_,shift)};
+      V result = ::ftz::detail::ftz32_vector_scaleb(value.value_, shift);
+      return {canonical{},select(active,result,V(0.f))};
     }
     /// \brief Scales each lane by 2^floor(exponent), retaining the FTZ result and boundary repair.
     template <class A, class E> requires std::same_as<A,simd> &&
@@ -395,8 +394,7 @@ export namespace native {
     native_nodiscard friend native_inline simd scaleb(A value, E exponent)
         noexcept(noexcept(scaling_exponent(exponent))) {
       V shift = scaling_exponent(exponent);
-      V result = scaleb(value.value_,shift);
-      return {canonical{},::ftz::detail::ftz32_scaled_result<Hardware>(mask_type(true),result,value.value_,shift)};
+      return {canonical{},::ftz::detail::ftz32_vector_scaleb(value.value_, shift)};
     }
     // An FTZ exponent alone does not change a raw base's arithmetic contract.
     // Explicit forwarding also prevents competing implicit native conversions.
@@ -404,20 +402,22 @@ export namespace native {
     /// raw arithmetic contract.
     template <class M, class A, class B>
       requires (std::same_as<M,mask_type> || std::same_as<M,vector_mask_type>) &&
-        std::same_as<A,V> && std::same_as<B,V>
+        std::same_as<A,V> && std::same_as<B,V> &&
+        requires(M mask, V raw) { masked_scaleb(mask,raw,raw,raw); }
     native_nodiscard friend native_inline native_const V masked_scaleb(
         M active, A prior, B value, simd exponent) noexcept {
       return masked_scaleb(active,prior,value,exponent.value_);
     }
     /// \brief Forwards an FTZ exponent to raw masked scaling with inactive lanes zeroed.
     template <class M, class A>
-      requires (std::same_as<M,mask_type> || std::same_as<M,vector_mask_type>) && std::same_as<A,V>
+      requires (std::same_as<M,mask_type> || std::same_as<M,vector_mask_type>) && std::same_as<A,V> &&
+        requires(M mask, V raw) { masked_scaleb_zero(mask,raw,raw); }
     native_nodiscard friend native_inline native_const V masked_scaleb_zero(
         M active, A value, simd exponent) noexcept {
       return masked_scaleb_zero(active,value,exponent.value_);
     }
     /// \brief Forwards an FTZ exponent to raw scaling without changing the raw base or result contract.
-    template <class A> requires std::same_as<A,V>
+    template <class A> requires std::same_as<A,V> && requires(V raw) { scaleb(raw,raw); }
     native_nodiscard friend native_inline native_const V scaleb(A value, simd exponent) noexcept {
       return scaleb(value,exponent.value_);
     }

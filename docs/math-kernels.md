@@ -43,19 +43,19 @@ optimization: live coefficients, masks and accumulators eventually spill.
 
 Work in this order, using an independent result oracle for each chosen contract.
 Changing a boundary or approximation requires updating every platform graph
-and its packet checks together. These are planned changes, not claims that the
-optimizations are implemented.
+and its packet checks together. Scaling's current implementation is described
+first; the remaining entries are planned optimizations.
 
-1. **General scaling integration.** FTZ's typed `scaleb` contract includes signed
-   flushing, nonfinite cases and the rounding strip at minimum normal. Its ARM
-   and AVX2 wrappers currently lack an available native scaling operation.
-   Define one inexpensive FTZ scaling contract and implement it privately for
-   those targets, using hardware scaling where it produces the chosen results.
-   Constrain raw-float forwarders to actual native support. Do not reuse exp's bounded reconstruction
-   for arbitrary bases and exponents. Decide explicitly whether the minimum-normal
-   rounding strip belongs in that contract rather than retaining a costly repair by default. The independent
-   scaling oracle and masked lane tests must agree on every admitted backend
-   before calling the full FTZ build qualified.
+1. **General scaling qualification.** Typed `scaleb` now owns an FTZ integer
+   exponent graph for every native shape. Arbitrary exponent words are clamped
+   into a finite conversion range before flooring; ordinary scaling changes the
+   base's exponent field. Vector masks preserve signed zeros, nonfinite cases
+   and the single maximum-significand rounding strip at minimum normal, without
+   extracting lanes or calling a scalar repair. Raw-float forwarders require an
+   actual native scaling instruction. This general algorithm is separate from
+   exp's bounded reconstruction. The unchanged independent scaling oracle passes
+   both policies on ARM and the complete Linux AVX2 suite. Actual AVX-512
+   execution remains a separate qualification gate.
 2. **`expm1` and damping gain.** Keep the cancellation-safe residual polynomial,
    exact tiny-input selection and the special rounding cases at exponents -25
    and zero. Reuse the normal power-of-two construction for the admitted graph;

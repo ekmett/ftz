@@ -3,10 +3,18 @@
 name: Native packages
 
 on:
-  push:
-    branches: [main]
   pull_request:
+    paths:
+      - '.github/**'
+      - 'CMakeLists.txt'
+      - 'src/**'
+      - 'tests/**'
   workflow_dispatch:
+    inputs:
+      full_matrix:
+        description: 'Also qualify Linux x64, macOS ARM64 and Windows x64'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -25,22 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: Linux x64 LLVM 23 / AVX2
-            runner: ubuntu-24.04
-            profile: AVX2
-          - name: Linux ARM64 LLVM 23 / NEON
-            runner: ubuntu-24.04-arm
-            profile: NEON
-          - name: macOS ARM64 LLVM 23 / NEON
-            runner: macos-15
-            profile: NEON
-          - name: Windows x64 LLVM 23 / AVX2
-            runner: windows-2025
-            profile: AVX2
-          - name: Windows ARM64 LLVM 23 / NEON
-            runner: windows-11-arm
-            profile: NEON
+        include: ${{ fromJSON(inputs.full_matrix && '[{"name":"Linux x64 LLVM 23 / AVX2","runner":"ubuntu-24.04","profile":"AVX2"},{"name":"Linux ARM64 LLVM 23 / NEON","runner":"ubuntu-24.04-arm","profile":"NEON"},{"name":"macOS ARM64 LLVM 23 / NEON","runner":"macos-15","profile":"NEON"},{"name":"Windows x64 LLVM 23 / AVX2","runner":"windows-2025","profile":"AVX2"},{"name":"Windows ARM64 LLVM 23 / NEON","runner":"windows-11-arm","profile":"NEON"}]' || '[{"name":"Linux ARM64 LLVM 23 / NEON","runner":"ubuntu-24.04-arm","profile":"NEON"},{"name":"Windows ARM64 LLVM 23 / NEON","runner":"windows-11-arm","profile":"NEON"}]') }}
     defaults:
       run:
         shell: bash
@@ -48,14 +41,14 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - name: Check out the qualified SIMD dependency
+      - name: Check out the qualified native dependency
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          repository: ekmett/simd
-          ref: a8a98407844041fc0480da6a7e3ad635f2678e52
+          repository: ekmett/native
+          ref: aa717e5740c43e22aba78bd7c7de962fd0a549d5
           path: build/deps/simd
           persist-credentials: false
-      # Use the setup actions from the same pinned, qualified SIMD revision.
+      # Use the setup actions from the same pinned, qualified native revision.
       - uses: ./build/deps/simd/.github/actions/setup/ubuntu/compiler
         if: runner.os == 'Linux'
       - uses: ./build/deps/simd/.github/actions/setup/ubuntu/build-tools
