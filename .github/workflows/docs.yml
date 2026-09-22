@@ -52,7 +52,10 @@ jobs:
           cmake -S . -B build/docs -G Ninja \
             -DFTZ_BUILD_HOST=OFF -DFTZ_BUILD_TESTS=OFF -DFTZ_BUILD_DOCS=ON \
             -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/build/prefix"
-          cmake --build build/docs --target ftz_docs --parallel
+          if ! cmake --build build/docs --target ftz_docs --parallel; then
+            cat build/docs/docs/*warnings.log 2>/dev/null || true
+            exit 1
+          fi
           python doc/test_module_anchors.py
           python doc/test_links.py
           python doc/check_links.py build/docs/docs/html

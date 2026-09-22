@@ -46,7 +46,7 @@ policies; this dependency build disables exceptions, so it does not exercise
 throw/unwind paths. The complete local suites pass 23/23 on Apple AArch64
 and 24/24 on Linux AVX2, including gradual, DAZ-only, FTZ-only and flushing x86
 scaling checks. Actual AVX-512 and Windows execution remain separate qualification
-gates. See the [kernel plan](math-kernels.md#next-operations).
+gates. See the [kernel plan](math-kernels.md).
 
 The common-width numerical packets have these reference identities:
 
