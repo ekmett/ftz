@@ -1,12 +1,14 @@
 #pragma once
 #include "ftz/config.h"
 #include "ftz/math/float.h"
+#include "ftz/math/exp_coefficients.h"
 
 namespace ftz { namespace detail { namespace math {
 
-  // The host and shader use the same early endpoints and degree-seven graph.
+  // The host and shader use the same early endpoints and selected-degree graph.
   // The active interval has n in [-126,127], and excludes the minimum-normal
   // rounding strip. A single normal factor therefore needs no output FTZ repair.
+  template <unsigned int Degree = 6>
   uint2 exp_value(unsigned int bits) {
     if ((bits & 0x7f800000u) == 0x7f800000u) return uint2(0u, 0u);
     precise float x = asfloat(bits);
@@ -16,13 +18,14 @@ namespace ftz { namespace detail { namespace math {
     precise float n = round(product);
     precise float first = fp32_fma<false>(n, asfloat(0xbf317200u), x);
     precise float r = fp32_fma<false>(n, asfloat(0xb5bfbe8eu), first);
-    precise float y = fp32_fma<false>(r, asfloat(0x3950eb8au), asfloat(0x3ab6d3abu));
-    y = fp32_fma<false>(r, y, asfloat(0x3c08882eu));
-    y = fp32_fma<false>(r, y, asfloat(0x3d2aaa32u));
-    y = fp32_fma<false>(r, y, asfloat(0x3e2aaaabu));
-    y = fp32_fma<false>(r, y, 0.5f);
-    y = fp32_fma<false>(r, y, 1.0f);
-    y = fp32_fma<false>(r, y, 1.0f);
+    // Degree is a template constant: unused Horner stages disappear at compile time.
+    precise float y = fp32_fma<false>(r, asfloat(exp_coefficients<Degree>::leading), asfloat(exp_coefficients<Degree>::next));
+    if (Degree >= 7) y = fp32_fma<false>(r, y, asfloat(exp_coefficients<Degree>::c5));
+    if (Degree >= 6) y = fp32_fma<false>(r, y, asfloat(exp_coefficients<Degree>::c4));
+    if (Degree >= 5) y = fp32_fma<false>(r, y, asfloat(exp_coefficients<Degree>::c3));
+    if (Degree >= 4) y = fp32_fma<false>(r, y, asfloat(exp_coefficients<Degree>::c2));
+    if (Degree >= 3) y = fp32_fma<false>(r, y, asfloat(exp_coefficients<Degree>::c1));
+    if (Degree >= 2) y = fp32_fma<false>(r, y, asfloat(exp_coefficients<Degree>::c0));
     // HLSL float-to-uint conversion has no ARM FCVTZU saturation contract.
     // Keep only this conversion bounded; range masks do not feed the reducer.
     precise float biased = active && !overflow ? n + 127.0f : 0.0f;

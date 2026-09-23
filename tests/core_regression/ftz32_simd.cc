@@ -84,7 +84,7 @@ namespace {
         };
         check(sine_values.registers[reg],core::ftz32_sin<>,"shaped wide sin");
         check(cosine_values.registers[reg],core::ftz32_cos<>,"shaped wide cos");
-        check(exponential.registers[reg],core::ftz32_exp,"shaped wide exp");
+        check(exponential.registers[reg],core::ftz32_exp<>,"shaped wide exp");
         check(minus_one.registers[reg],core::ftz32_expm1<>,"shaped wide expm1");
         // Inputs are immutable raw state, including NaN payloads, even though
         // function-result NaNs compare by the declared equivalence relation.

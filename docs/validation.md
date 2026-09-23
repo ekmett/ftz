@@ -23,16 +23,33 @@ The maintained suites cover:
 - Module type identity, family-typed architecture arguments, scalar mask traits
   and the provider's default architecture.
 
-The exponential contract fixture checks 299,247 inputs, including dense binary32
-windows at both output cutoffs and every reduction transition. Scalar and SIMD
-results under gradual and flush CPU controls match an independent graph oracle.
-The recorded Apple M3 and AVX2 packets have the same SHA-256:
-`64bc518d4fae9be61ea826d2795a8933423fb6f5dc0e81a43d3d647076c8fd41`.
-The [DXC → SPIR-V → Metal fixture](../tests/exp_shader/README.md) under both
-shader policies matches that bank on
-Apple M3, with NaN payload differences permitted. This is sampled cross-platform
-agreement, not an MPFR accuracy bound or an exhaustive proof for every input.
-Actual Windows and AVX-512 runtime qualification is separate from cross-compilation.
+The exponential contract fixture checks 299,250 inputs for each degree 1 through
+7, including dense binary32 windows at both output cutoffs and every reduction
+transition. Scalar, SIMD, arrays and wide packs (including N6) match an independent
+frozen-coefficient graph oracle under m32 gradual/flush and h32 flush controls.
+The default degree-six calls and the positive `expm1` continuation also agree.
+
+The [DXC → SPIR-V → Metal fixture](../tests/exp_shader/README.md) matches all
+seven banks under both shader policies on Apple M3, permitting NaN payload
+differences. The 14 runs each report zero mismatches. The canonical-input/oracle
+packets have these SHA-256 identities:
+
+| Degree | Packet SHA-256 |
+| --- | --- |
+| 1 | `1dbb15a13ad230b0a366ec6b4ccb90c1b681d699d587df5f6ff06cfba3d6c6eb` |
+| 2 | `d39d7fbc3e019d0f0180c6697ded050a3aa50fecc8560f9502f7b0f040c2ab25` |
+| 3 | `115c24ad14788a2f8ed17cb331ae17d422808d2ea9138987cc39bb572143d714` |
+| 4 | `7d129972ab1699c0a643352dc4c9cf8ef31ab928c42d1bf89f7694250f2e6bbb` |
+| 5 | `51f19b2cbc704c2434af54aadd8031a86af59ae7af6e3a387845eb742f738273` |
+| 6 | `ba6031b526079291429fc1bef1311917e5e17c9b44e9206a0565c681a613285e` |
+| 7 | `a5586862a42114798c0310d5b5c71731bcb4dbe1e05ce4fe51a4d6267f1363ca` |
+
+This is sampled CPU/shader operation-graph agreement, not an MPFR accuracy bound
+or an exhaustive proof for every input. Clang 23.1.1 with the macOS 15.5 SDK,
+DXC 1.9 (0d3ee6b5), SPIR-V validation and SPIRV-Cross MSL 2.3 produced this receipt.
+The focused exp/SIMD/dual-policy CTest suites passed 4/4. Current AVX2, AVX-512
+and Windows runtime qualification is separate. The earlier degree-seven,
+299,247-input Apple M3/AVX2 equality receipt predates this selectable-degree graph.
 
 General FTZ scaling now has its own vector integer exponent graph, including
 signed flushing, nonfinite cases and the minimum-normal rounding boundary.

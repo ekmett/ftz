@@ -261,15 +261,16 @@ namespace ftz { namespace detail {
   native_nodiscard native_inline native_const unsigned int ftz32_log(unsigned int bits){return ::ftz::detail::math::log_words<Hardware>(bits).bits;}
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
   native_nodiscard native_inline native_const unsigned int ftz32_log1p(unsigned int bits){return ::ftz::detail::math::log1p_words<Hardware>(bits).bits;}
+  template <unsigned int Degree = 6>
   native_nodiscard native_inline native_const unsigned int ftz32_exp(unsigned int bits){
 #ifdef __cplusplus
-    return ::ftz::detail::math::fp32_encode(ftz::detail::native::exp_ftz(
+    return ::ftz::detail::math::fp32_encode(ftz::detail::native::exp_ftz<Degree>(
       ftz::detail::native::fp32x1(::ftz::detail::math::fp32_decode(bits))).value);
 #else
     unsigned int magnitude=bits&0x7fffffffu;
     if(magnitude>ftz32_infinity)return ftz32_nan;
     if(magnitude==ftz32_infinity)return (bits&ftz32_sign)!=0u?0u:ftz32_infinity;
-    return ::ftz::detail::math::exp_value(bits).x;
+    return ::ftz::detail::math::exp_value<Degree>(bits).x;
 #endif
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>

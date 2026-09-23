@@ -898,12 +898,12 @@ export namespace ftz {
     native_nodiscard native_inline native_pure std::array<R, N> sin(std::array<R, N> const & input) noexcept { return trig_single<false>(input); }
     template <detail::ftz32_value R, std::size_t N>
     native_nodiscard native_inline native_pure std::array<R, N> cos(std::array<R, N> const & input) noexcept { return trig_single<true>(input); }
-    template <detail::ftz32_value R, std::size_t N>
+    template <unsigned int Degree = 6, detail::ftz32_value R, std::size_t N> requires (Degree >= 1 && Degree <= 7)
     native_nodiscard native_inline native_pure std::array<R, N> exp(std::array<R, N> const & input) noexcept {
       if constexpr (N == 0) return {};
       else {
         auto const & [...input_register] = input;
-        auto const [...value] = native::exp_ftz(
+        auto const [...value] = native::exp_ftz<Degree>(
           std::array{detail::ftz32_unwrap(input_register)...});
         return std::array{detail::ftz32_wrap<R>(value)...};
       }
@@ -949,11 +949,14 @@ export namespace ftz {
   /// \ingroup ftz_vectors
   /// \brief Computes the exponential with the scalar FTZ underflow, overflow and special-value
   /// rules. Returns R.
-  template <detail::ftz32_vector R>
+  /// \tparam Degree Polynomial degree in [1,7]; the default is 6.
+  template <unsigned int Degree = 6, detail::ftz32_vector R> requires (Degree >= 1 && Degree <= 7)
   native_nodiscard native_inline native_pure R exp(R input) noexcept {
-    auto [value] = detail::ftz32_math::exp(std::array{input});
+    auto [value] = detail::ftz32_math::exp<Degree>(std::array{input});
     return value;
   }
+  template <detail::ftz32_vector R, bool Flush, unsigned int Degree> requires (!Flush && Degree >= 1 && Degree <= 7)
+  native_nodiscard native_inline native_pure R exp(R input, std::bool_constant<Flush>, std::integral_constant<unsigned int, Degree>) noexcept { return exp<Degree>(input); }
   /// \ingroup ftz_vectors
   /// \brief Computes exp(x)-1 with the scalar FTZ graph, preserving signed zero. Returns R.
   template <detail::ftz32_vector R>
@@ -1111,10 +1114,13 @@ export namespace ftz {
   /// \ingroup ftz_register_arrays
   /// \brief Computes the exponential with the scalar FTZ underflow, overflow and special-value
   /// rules. Returns std::array<R,N>.
-  template<detail::ftz32_value R, std::size_t N>
+  /// \tparam Degree Polynomial degree in [1,7]; the default is 6.
+  template<unsigned int Degree = 6, detail::ftz32_value R, std::size_t N> requires (Degree >= 1 && Degree <= 7)
   native_nodiscard native_inline auto exp(std::array<R,N> const & input) noexcept {
-    return detail::ftz32_math::exp(input);
+    return detail::ftz32_math::exp<Degree>(input);
   }
+  template<detail::ftz32_value R, std::size_t N, bool Flush, unsigned int Degree> requires (!Flush && Degree >= 1 && Degree <= 7)
+  native_nodiscard native_inline auto exp(std::array<R,N> const & input, std::bool_constant<Flush>, std::integral_constant<unsigned int, Degree>) noexcept { return exp<Degree>(input); }
   /// \ingroup ftz_register_arrays
   /// \brief Computes exp(x)-1 with the scalar FTZ graph, preserving signed zero. Returns std::array<R,N>.
   template<detail::ftz32_value R, std::size_t N>

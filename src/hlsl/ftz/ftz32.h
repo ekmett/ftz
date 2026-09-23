@@ -209,9 +209,11 @@ namespace ftz {
   /// \ingroup ftz_shader
   /// \brief Returns the reproducible exponential; negative infinity gives positive zero and
   /// positive infinity is preserved.
+  /// \tparam Degree Polynomial degree in [1,7]; the default is 6.
+  template <unsigned int Degree = 6>
   ftz32 exp(ftz32 value) {
     ftz32 result;
-    result.bits_ = detail::ftz32_exp(value.bits_);
+    result.bits_ = detail::ftz32_exp<Degree>(value.bits_);
     return result;
   }
   /// \ingroup ftz_shader

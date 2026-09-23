@@ -9,9 +9,12 @@ sharing their graph avoids unnecessary differences where it costs nothing.
 
 ## Exponential
 
-`exp` uses nearest-even reduction, the two-part ln(2) subtraction and the existing
-degree-seven polynomial. Its lower cutoff is `-87.33654022216796875f`; its upper
-finite input is `88.37625885009765625f`. Larger inputs return positive infinity.
+`exp<Degree=6>` accepts compile-time degrees 1 through 7 on scalar values, SIMD
+registers, register arrays and HLSL values. Existing `exp(x)` calls select degree
+6, whose constant and linear coefficients are exactly one. All degrees use the
+same nearest-even reduction and two-part ln(2) subtraction. The lower cutoff is
+`-87.33654022216796875f`; the upper finite input is `88.37625885009765625f`.
+Larger inputs return positive infinity.
 This permits the same inexpensive reconstruction on ARM and AVX2 as native's
 `exp<true>`, without a separate exponent-128 correction.
 
@@ -29,15 +32,36 @@ do not clamp the input on the reduction dependency chain.
 
 The integer conversions have defined behavior for NaNs and out-of-range values.
 NaN payloads remain outside bit equality; every other result word, including
-signed zero, is part of the cross-platform contract. NaNs already reach the polynomial and propagate through the final product; a
-separate NaN mask before conversion adds no value. C++ floating-to-integer casts
-with an out-of-range precondition are not a substitute for those instructions.
+signed zero, is part of the cross-platform contract. NaNs already reach the
+polynomial and propagate through the final product; a separate NaN mask before
+conversion adds no value. C++ floating-to-integer casts with an out-of-range
+precondition are not a substitute for those instructions.
 
 Independent register chains advance through each reduction or polynomial stage
 together. Constants are single register values shared across the pack. A
 `simd<float,1>` path checks correctness; throughput work uses full SIMD registers
 and varies the register count. Increasing a pack indefinitely is not an
 optimization: live coefficients, masks and accumulators eventually spill.
+
+The [Sollya script](../tests/exp_fit/fit.sollya) reproduces degrees 1 through 6;
+degree 7 retains the previously shipped coefficients. Lower degrees exchange
+accuracy for fewer fused Horner stages; degree 1 is a piecewise affine
+approximation after reduction and scaling. Every polynomial has constant one,
+so either input zero returns exactly one. Degrees 1 through 5 have fitted linear
+terms. Selection is a template parameter with no runtime degree branch.
+
+For a `native::wide` containing FTZ values, use `exp<false, Degree>(pack)` to
+select the degree through native's generic adapter. The `false` argument retains
+the existing delegation to FTZ's own operation; the FTZ type still determines
+its flushing contract. There is no additional FTZ `Flush=true` overload.
+
+The default degree-six polynomial removes one fused multiply-add per register
+without changing reduction, endpoints, reconstruction, or the NaN exception. Approximate output words change;
+this is a new graph shared by host and shader, not a bit-preserving replacement.
+The positive `expm1(x)` continuation for `x>1` calls this exponential and therefore
+inherits the change. The cancellation-safe `expm1` core and damping gain retain
+their separate polynomial. The [fit record](../tests/exp_fit/README.md) distinguishes
+sampled accuracy from the exact cross-platform operation contract.
 
 ## Next operations
 

@@ -1,0 +1,18 @@
+// SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
+// SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
+// Original fits, shared with native's selectable-degree exponential.
+prec = 256!;
+display = hexadecimal!;
+I = [-0x1.62e5d2p-2;0x1.62e52ep-2];
+for poly_degree from 1 to 6 do {
+  basis = [||];
+  for k from 1 to poly_degree do { basis = basis :. k; };
+  if poly_degree == 6 then { objective = absolute; }
+  else { objective = relative; };
+  p = fpminimax(exp(x), basis, [|single...|], I, objective, 1);
+  print("degree", poly_degree, "objective", objective);
+  print(p);
+  print("absolute estimate (not a proof)", dirtyinfnorm(p-exp(x),I));
+  print("relative estimate (not a proof)", dirtyinfnorm(p/exp(x)-1,I));
+};
+quit;

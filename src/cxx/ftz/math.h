@@ -1,6 +1,7 @@
 #pragma once
 #include <native/attributes.h>
 #include <ftz/config.h>
+#include <ftz/math/exp_coefficients.h>
 #include <array>
 #include <bit>
 #include <utility>
@@ -70,7 +71,7 @@ namespace ftz::detail::native {
 #endif
     }
   }
-  template <float_register V, std::size_t N>
+  template <unsigned int Degree = 6, float_register V, std::size_t N> requires (Degree >= 1 && Degree <= 7)
   native_flatten native_inline std::array<V, N> exp_ftz(std::array<V, N> const & input) noexcept {
     if constexpr (N == 0) return {};
     else {
@@ -87,14 +88,15 @@ namespace ftz::detail::native {
       auto const [...n] = std::array{round_even(r * V(1.4426950408889634f))...};
       ((r = fma(n, V(-0x1.62e400p-1f), r)), ...);
       ((r = fma(n, V(-0x1.7f7d1cp-20f), r)), ...);
-      auto [...y] = std::array{fma(r, V(0x1.a1d714d7b1510dp-13f), V(0x1.6da756e670ea6p-10f))...};
-      ((y = fma(r, y, V(0x1.11105b3161a6fp-7f))), ...);
-      ((y = fma(r, y, V(0x1.5554649b7487fp-5f))), ...);
-      ((y = fma(r, y, V(0x1.555555c673724p-3f))), ...);
-      ((y = fma(r, y, V(0x1.0000005c8dd89p-1f))), ...);
-      auto const one = V(1.f);
-      ((y = fma(r, y, one)), ...);
-      ((y = fma(r, y, one)), ...);
+      using C = ::ftz::detail::math::exp_coefficients<Degree>;
+      auto const coefficient = [](unsigned int word) noexcept { return V(std::bit_cast<float>(word)); };
+      auto [...y] = std::array{fma(r, coefficient(C::leading), coefficient(C::next))...};
+      if constexpr (Degree >= 7) ((y = fma(r, y, coefficient(C::c5))), ...);
+      if constexpr (Degree >= 6) ((y = fma(r, y, coefficient(C::c4))), ...);
+      if constexpr (Degree >= 5) ((y = fma(r, y, coefficient(C::c3))), ...);
+      if constexpr (Degree >= 4) ((y = fma(r, y, coefficient(C::c2))), ...);
+      if constexpr (Degree >= 3) ((y = fma(r, y, coefficient(C::c1))), ...);
+      if constexpr (Degree >= 2) ((y = fma(r, y, coefficient(C::c0))), ...);
       if constexpr (requires { masked_scaleb_zero(active...[0], y...[0], n...[0]); }) {
         return {{masked_scaleb(in_range, replacement, y, n)...}};
       } else {
@@ -107,8 +109,8 @@ namespace ftz::detail::native {
       }
     }
   }
-  template <float_register V>
-  native_inline V exp_ftz(V input) noexcept { return exp_ftz(std::array{input})[0]; }
+  template <unsigned int Degree = 6, float_register V> requires (Degree >= 1 && Degree <= 7)
+  native_inline V exp_ftz(V input) noexcept { return exp_ftz<Degree>(std::array{input})[0]; }
 }
 
 // Altered source: paired polynomial and reducer with signed input FTZ,

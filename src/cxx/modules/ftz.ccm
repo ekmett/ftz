@@ -304,8 +304,11 @@ export namespace ftz {
   /// \brief Returns the reproducible exponential; negative infinity gives positive zero and
   /// positive infinity is preserved.
   /// \returns A value with the input FTZ policy.
-  template <bool Hardware>
-  native_nodiscard native_inline native_const basic_ftz32<Hardware> exp(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_exp(a.to_bits()))); }
+  /// \tparam Degree Polynomial degree in [1,7]; the default is 6.
+  template <unsigned int Degree = 6, bool Hardware> requires (Degree >= 1 && Degree <= 7)
+  native_nodiscard native_inline native_const basic_ftz32<Hardware> exp(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_exp<Degree>(a.to_bits()))); }
+  template <bool Hardware, bool Flush, unsigned int Degree> requires (!Flush && Degree >= 1 && Degree <= 7)
+  native_nodiscard native_inline native_const basic_ftz32<Hardware> exp(basic_ftz32<Hardware> a, std::bool_constant<Flush>, std::integral_constant<unsigned int, Degree>) noexcept { return exp<Degree>(a); }
   /// \ingroup ftz_math
   /// \brief Approximates exp(x)-1 without subtracting one for tiny x; signed zero is preserved.
   /// \returns A value with the input FTZ policy.
@@ -462,10 +465,10 @@ export namespace ftz {
   /// \brief Returns the reproducible exponential; negative infinity gives positive zero and
   /// positive infinity is preserved.
   /// Converts each forwarded argument once; the selected policy and conversion noexcept are retained.
-  template <class T> requires detail::scalar_argument<T &&>
+  template <unsigned int Degree = 6, class T> requires (detail::scalar_argument<T &&> && Degree >= 1 && Degree <= 7)
   native_nodiscard constexpr native_inline auto exp(T && a)
-    noexcept(noexcept(exp(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
-    return exp(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
+    noexcept(noexcept(exp<Degree>(detail::scalar_argument_t<T &&>(std::forward<T>(a))))) {
+    return exp<Degree>(detail::scalar_argument_t<T &&>(std::forward<T>(a)));
   }
   /// \ingroup ftz_math
   /// \brief Approximates exp(x)-1 without subtracting one for tiny x; signed zero is preserved.
