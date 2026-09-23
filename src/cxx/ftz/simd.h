@@ -955,6 +955,10 @@ export namespace ftz {
     auto [value] = detail::ftz32_math::exp<Degree>(std::array{input});
     return value;
   }
+  /// \ingroup ftz_vectors
+  /// \brief Delegates native's degree-aware ADL call to the SIMD FTZ exponential.
+  /// \tparam Flush Must be false; the element type determines the FTZ policy.
+  /// \tparam Degree Polynomial degree in [1,7].
   template <detail::ftz32_vector R, bool Flush, unsigned int Degree> requires (!Flush && Degree >= 1 && Degree <= 7)
   native_nodiscard native_inline native_pure R exp(R input, std::bool_constant<Flush>, std::integral_constant<unsigned int, Degree>) noexcept { return exp<Degree>(input); }
   /// \ingroup ftz_vectors
@@ -1119,6 +1123,10 @@ export namespace ftz {
   native_nodiscard native_inline auto exp(std::array<R,N> const & input) noexcept {
     return detail::ftz32_math::exp<Degree>(input);
   }
+  /// \ingroup ftz_register_arrays
+  /// \brief Delegates native's degree-aware ADL call to the register-array FTZ exponential.
+  /// \tparam Flush Must be false; the element type determines the FTZ policy.
+  /// \tparam Degree Polynomial degree in [1,7].
   template<detail::ftz32_value R, std::size_t N, bool Flush, unsigned int Degree> requires (!Flush && Degree >= 1 && Degree <= 7)
   native_nodiscard native_inline auto exp(std::array<R,N> const & input, std::bool_constant<Flush>, std::integral_constant<unsigned int, Degree>) noexcept { return exp<Degree>(input); }
   /// \ingroup ftz_register_arrays

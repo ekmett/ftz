@@ -47,23 +47,23 @@ packets have these SHA-256 identities:
 This is sampled CPU/shader operation-graph agreement, not an MPFR accuracy bound
 or an exhaustive proof for every input. Clang 23.1.1 with the macOS 15.5 SDK,
 DXC 1.9 (0d3ee6b5), SPIR-V validation and SPIRV-Cross MSL 2.3 produced this receipt.
-The focused exp/SIMD/dual-policy/profile-golden CTest suites passed 5/5. Current AVX2, AVX-512
-and Windows runtime qualification is separate. The earlier degree-seven,
-299,247-input Apple M3/AVX2 equality receipt predates this selectable-degree graph.
+The focused exp/SIMD/dual-policy/profile-golden CTest suites passed 5/5. These
+exponential degrees have no recorded FTZ runtime qualification on AVX2, AVX-512
+or Windows.
 
-General FTZ scaling now has its own vector integer exponent graph, including
+General FTZ scaling has its own vector integer exponent graph, including
 signed flushing, nonfinite cases and the minimum-normal rounding boundary.
-On Apple AArch64, the unchanged 40,600-row independent dyadic oracle passes
+On Apple AArch64, the 40,600-row independent dyadic oracle passes
 3,572,844 word checks per admitted run across widths 1, 2, 3 and 4: m32 under
 gradual and flush controls, and h32 under flush controls. The h32 gradual
 case rejects admission. Merge/zero masks retain inactive words exactly, and raw
 scaling forwarders are unavailable when the target has no scaling instruction.
 Conversion noexcept and discarded-result side-effect checks pass for both
 policies; this dependency build disables exceptions, so it does not exercise
-throw/unwind paths. The complete local suites pass 23/23 on Apple AArch64
-and 24/24 on Linux AVX2, including gradual, DAZ-only, FTZ-only and flushing x86
-scaling checks. Actual AVX-512 and Windows execution remain separate qualification
-gates. See the [kernel plan](math-kernels.md).
+throw/unwind paths. The scaling record also covers Linux AVX2 gradual, DAZ-only, FTZ-only and
+flushing controls. That coverage applies to scaling; the exponential degrees
+require separate x86 qualification. Actual AVX-512 and Windows execution remain
+separate qualification gates. See the [kernel plan](math-kernels.md).
 
 The common-width numerical packets have these reference identities:
 

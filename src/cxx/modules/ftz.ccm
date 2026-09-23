@@ -307,6 +307,10 @@ export namespace ftz {
   /// \tparam Degree Polynomial degree in [1,7]; the default is 6.
   template <unsigned int Degree = 6, bool Hardware> requires (Degree >= 1 && Degree <= 7)
   native_nodiscard native_inline native_const basic_ftz32<Hardware> exp(basic_ftz32<Hardware> a) noexcept { return basic_ftz32<Hardware>::unsafe_from_float32(std::bit_cast<float>(detail::ftz32_exp<Degree>(a.to_bits()))); }
+  /// \ingroup ftz_math
+  /// \brief Delegates native's degree-aware ADL call to the scalar FTZ exponential.
+  /// \tparam Flush Must be false; the input type determines the FTZ policy.
+  /// \tparam Degree Polynomial degree in [1,7].
   template <bool Hardware, bool Flush, unsigned int Degree> requires (!Flush && Degree >= 1 && Degree <= 7)
   native_nodiscard native_inline native_const basic_ftz32<Hardware> exp(basic_ftz32<Hardware> a, std::bool_constant<Flush>, std::integral_constant<unsigned int, Degree>) noexcept { return exp<Degree>(a); }
   /// \ingroup ftz_math
