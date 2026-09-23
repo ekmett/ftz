@@ -47,7 +47,7 @@ packets have these SHA-256 identities:
 This is sampled CPU/shader operation-graph agreement, not an MPFR accuracy bound
 or an exhaustive proof for every input. Clang 23.1.1 with the macOS 15.5 SDK,
 DXC 1.9 (0d3ee6b5), SPIR-V validation and SPIRV-Cross MSL 2.3 produced this receipt.
-The focused exp/SIMD/dual-policy CTest suites passed 4/4. Current AVX2, AVX-512
+The focused exp/SIMD/dual-policy/profile-golden CTest suites passed 5/5. Current AVX2, AVX-512
 and Windows runtime qualification is separate. The earlier degree-seven,
 299,247-input Apple M3/AVX2 equality receipt predates this selectable-degree graph.
 

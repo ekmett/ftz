@@ -3,7 +3,15 @@
 `baseline.bin` contains 2,208 words (96 values, 23 columns). The shared exp
 overflow cutoff gives positive infinity for input `0x42b17217` at lane 24 in
 scalar and wide exp/expm1 (columns 2, 3, 10 and 11).
-The dense exp contract fixture independently checks both cutoff signs under
+The default degree-six graph updates 12 of the 2,208 baseline words: three each
+in scalar/wide exp columns 2/10, two each in scalar/wide expm1 columns 3/11, and
+two in raw-native exp column 20. Each changes by one representable step; all
+other columns are byte-identical. The old/new exp columns and positive expm1
+continuations were checked against independent degree-seven/six fused graphs.
+The current baseline SHA-256 is
+`1f24ad069d3859eb8db991c4bb0b5bc66fea1edb101e023f134bec87307c99d3`.
+
+The dense exp contract fixture independently checks all seven degrees and both cutoff signs under
 m32 gradual/flush and h32 flush controls. The profile fixture covers scalar
 FTZ functions, wide96 exp/expm1/sincos, native arithmetic and masks, raw exp,
 integer transforms, masked scaling, guarded-page tails and null empty inputs.
