@@ -1,5 +1,11 @@
 # FTZ profile baseline
 
+`finite-range.bin` is the current 2,208-word baseline. It differs from retained
+`baseline.bin` only at lane 24 of columns 2, 3, 10 and 11: corrected exp/expm1
+return 0x7f7fff84 for input 0x42b17217 instead of early infinity.
+Its SHA-256 is `5f914a3894cef40480f47c220d5c7aa6497287bcccbb322dee40d8ceb56beed1`.
+The old file below remains unchanged as the early-cutoff record.
+
 `baseline.bin` contains 2,208 words (96 values, 23 columns). The shared exp
 overflow cutoff gives positive infinity for input `0x42b17217` at lane 24 in
 scalar and wide exp/expm1 (columns 2, 3, 10 and 11).

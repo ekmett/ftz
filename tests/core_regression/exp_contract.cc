@@ -8,6 +8,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
+#if defined(__x86_64__) || defined(_M_X64)
+#include <xmmintrin.h>
+#endif
 #include "support/imports.h"
 
 namespace {
@@ -27,7 +30,7 @@ namespace {
     if (magnitude > 0x7f800000u) return 0x7fc00000u;
     float x = std::bit_cast<float>(word);
     if (x < -87.33654022216796875f) return 0;
-    if (x > 88.37625885009765625f) return 0x7f800000u;
+    if (x > 88.72283172607421875f) return 0x7f800000u;
     float const n = std::nearbyint(x * std::bit_cast<float>(0x3fb8aa3bu));
     float const first = std::fma(n, std::bit_cast<float>(0xbf317200u), x);
     float const r = std::fma(n, std::bit_cast<float>(0xb5bfbe8eu), first);
@@ -42,7 +45,7 @@ namespace {
       0x80800000u, 0x7f800000u, 0xff800000u, 0x7fc00000u, 0xff800001u,
       0x7f7fffffu, 0xff7fffffu, 0x3f7fffffu, 0x3f800000u, 0x3f800001u, 0x42b0c0a5u, 0x42b17217u, 0x42b17218u};
     // Every binary32 input across the FTZ cutoff and across the upper interval
-    // n=127/128 early-overflow transition and the old endpoint, including neighbors.
+    // n=127/128 transition and the finite overflow endpoint, including neighbors.
     for (std::uint32_t word = 0xc2ae0000u; word <= 0xc2b00000u; ++word) result.push_back(word);
     for (std::uint32_t word = 0x42b00000u; word <= 0x42b20000u; ++word) result.push_back(word);
     // Probe each reducer transition in the normal-output interval.
@@ -163,7 +166,7 @@ namespace {
     {
       ftz::native_fp32_scope scope(ftz::native_fp32_mode::gradual);
       for (auto word : bank) expected.push_back(reference<Degree>(word));
-      if (reference<Degree>(0x42b0c0a5u) == 0x7f800000u || reference<Degree>(0x42b0c0a6u) != 0x7f800000u ||
+      if (reference<Degree>(0x42b0c0a5u) == 0x7f800000u || reference<Degree>(0x42b0c0a6u) == 0x7f800000u || reference<Degree>(0x42b17218u) != 0x7f800000u ||
           reference<Degree>(0xc2aeac4fu) == 0 || reference<Degree>(0xc2aeac50u) != 0) std::abort();
       check_policy<Degree, ftz::m32>(bank, expected);
     }
@@ -172,10 +175,28 @@ namespace {
       check_policy<Degree, ftz::m32>(bank, expected);
       check_policy<Degree, ftz::h32>(bank, expected);
     }
+#if defined(__x86_64__) || defined(_M_X64)
+    // m32 admits both mixed modes too. Inputs span lower/upper transitions,
+    // signed zero and NaNs; their expected words use the gradual oracle above.
+    std::vector<std::uint32_t> edge{0xc2aeac4fu,0xc2aeac50u,0x42b17214u,0x42b17217u,0x42b17218u,0,0x80000000u,0x7fc00001u};
+    std::vector<std::uint32_t> wanted;
+    { ftz::native_fp32_scope scope(ftz::native_fp32_mode::gradual);
+      for (auto word : edge) wanted.push_back(reference<Degree>(word)); }
+    for (unsigned mode : {0x40u,0x8000u}) {
+      ftz::native_fp32_scope scope(ftz::native_fp32_mode::gradual);
+      _mm_setcsr((_mm_getcsr() & ~0x8040u) | mode);
+      check_policy<Degree,ftz::m32>(edge,wanted);
+    }
+#endif
     if (packet) {
       // Headerless little-endian uint32 pairs: canonical input, oracle output.
       // This is also the GPU fixture bank; raw source NaNs remain unmodified.
+#if defined(_MSC_VER)
+      std::FILE * file = nullptr;
+      if (::fopen_s(&file, packet, "wb") != 0) file = nullptr;
+#else
       auto * file = std::fopen(packet, "wb");
+#endif
       if (!file) std::exit(3);
       for (std::size_t i = 0; i < bank.size(); ++i) {
         auto const input = (bank[i] & 0x7f800000u) == 0 ? bank[i] & 0x80000000u : bank[i];

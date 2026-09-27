@@ -13,20 +13,23 @@ sharing their graph avoids unnecessary differences where it costs nothing.
 registers, register arrays and HLSL values. Ordinary `exp(x)` calls select degree
 6, whose constant and linear coefficients are exactly one. All degrees use the
 same nearest-even reduction and two-part ln(2) subtraction. The lower cutoff is
-`-87.33654022216796875f`; the upper finite input is `88.37625885009765625f`.
+`-87.33654022216796875f`; the last input before forced overflow is `88.72283172607421875f`.
 Larger inputs return positive infinity.
-This permits the same inexpensive reconstruction on ARM and AVX2 as native's
-`exp<true>`, without a separate exponent-128 correction.
+This corrects the former early cutoff at `88.37625885009765625f`, which
+returned infinity for finite results. Degree six and seven retain finite results
+through the new endpoint; lower-degree approximation error can overflow earlier.
 
 | Platform | Reconstruction |
 | --- | --- |
 | AVX-512 with an admitted scaling instruction | Masked `VSCALEFPS`, selected by the vector's requirements and available overload. |
-| AArch64 NEON | Biased exponent conversion with `FCVTZU`, integer shift and one scale multiply. |
-| AVX2 | `CVTTPS2DQ`, signed maximum with zero, integer shift and one scale multiply. |
+| AArch64 NEON | Biased exponent conversion with `FCVTZU`, integer shift and one scale multiply, plus a selected doubling for n=128. |
+| AVX2 | `CVTTPS2DQ`, signed maximum with zero, integer shift and one scale multiply, plus a selected doubling for n=128. |
 
-For the last two paths, every active finite exponent lies in [-126,127]. The
+For the last two paths, every active finite exponent lies in [-126,128]. The
 lower cutoff excludes the minimum-normal rounding strip. These bounds permit
-one scale multiply with no lane-by-lane repair. Underflow and overflow flags
+one scale multiply below n=128. At n=128 the first factor is 2^127 and
+the second is 2, with an exact normal first product. Lower lanes retain their
+first product directly under all admitted FP modes. Underflow and overflow flags
 are computed independently of the polynomial and select its final result; they
 do not clamp the input on the reduction dependency chain.
 

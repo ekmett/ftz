@@ -39,7 +39,7 @@ namespace ftz::detail::native {
   }
 }
 
-// FTZ owns one host/shader exponential graph. Its early overflow endpoint
+// FTZ owns one host/shader exponential graph. Its finite overflow endpoint
 // matches native::exp<true>; reconstruction alone is instruction-specific.
 namespace ftz::detail::native {
   namespace detail {
@@ -78,9 +78,9 @@ namespace ftz::detail::native {
       auto const & [...x] = input;
       auto const [...active] = std::array{(!(x < V(-87.33654022216796875f)))...};
       // Classify independently of the arithmetic chain. This is the last
-      // binary32 input before the reducer produces n=128. NaNs stay on the
+      // binary32 input whose exact exponential rounds finite. NaNs stay on the
       // arithmetic path without a separate comparison or restoration select.
-      auto const [...overflow] = std::array{(x > V(88.37625885009765625f))...};
+      auto const [...overflow] = std::array{(x > V(88.72283172607421875f))...};
       auto const [...in_range] = std::array{(active & !overflow)...};
       auto const [...replacement] = std::array{select(overflow,
         V(std::bit_cast<float>(0x7f800000u)), V(0.f))...};
@@ -100,11 +100,13 @@ namespace ftz::detail::native {
       if constexpr (requires { masked_scaleb_zero(active...[0], y...[0], n...[0]); }) {
         return {{masked_scaleb(in_range, replacement, y, n)...}};
       } else {
-        // Active finite exponents are [-126,127]. The cutoff excludes the
-        // minimum-normal rounding strip, so this exact normal scaling product
-        // needs neither split factors nor per-stage/output FTZ repair.
-        auto const [...factor] = std::array{detail::exp_factor(n + V(127.f))...};
+        // Active exponents are [-126,128]. Only n=128 needs a second factor;
+        // its first product is exact and normal. Retain all lower products
+        // directly, including their behavior under mixed DAZ/FTZ controls.
+        auto const [...high] = std::array{(n > V(127.f))...};
+        auto const [...factor] = std::array{detail::exp_factor(n + select(high, V(126.f), V(127.f)))...};
         ((y = y * factor), ...);
+        ((y = select(high, select(high, y, V(0.f)) * V(2.f), y)), ...);
         return {{select(in_range, y, replacement)...}};
       }
     }

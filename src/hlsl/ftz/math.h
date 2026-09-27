@@ -5,15 +5,15 @@
 
 namespace ftz { namespace detail { namespace math {
 
-  // The host and shader use the same early endpoints and selected-degree graph.
-  // The active interval has n in [-126,127], and excludes the minimum-normal
-  // rounding strip. A single normal factor therefore needs no output FTZ repair.
+  // The host and shader use the same endpoints and selected-degree graph.
+  // The active interval has n in [-126,128], and excludes the minimum-normal
+  // rounding strip. Only n=128 requires two normal scaling factors.
   template <unsigned int Degree = 6>
   uint2 exp_value(unsigned int bits) {
     if ((bits & 0x7f800000u) == 0x7f800000u) return uint2(0u, 0u);
     precise float x = asfloat(bits);
     bool active = !(x < asfloat(0xc2aeac4fu));
-    bool overflow = x > asfloat(0x42b0c0a5u);
+    bool overflow = x > asfloat(0x42b17217u);
     precise float product = x * asfloat(0x3fb8aa3bu);
     precise float n = round(product);
     precise float first = fp32_fma<false>(n, asfloat(0xbf317200u), x);
@@ -28,9 +28,12 @@ namespace ftz { namespace detail { namespace math {
     if (Degree >= 2) y = fp32_fma<false>(r, y, asfloat(exp_coefficients<Degree>::c0));
     // HLSL float-to-uint conversion has no ARM FCVTZU saturation contract.
     // Keep only this conversion bounded; range masks do not feed the reducer.
-    precise float biased = active && !overflow ? n + 127.0f : 0.0f;
+    bool high = n > 127.0f;
+    precise float biased = active && !overflow ? n + (high ? 126.0f : 127.0f) : 0.0f;
     float factor = asfloat((unsigned int)biased << 23);
-    precise float scaled = y * factor;
+    precise float first_scaled = y * factor;
+    precise float high_scaled = (high ? first_scaled : 0.0f) * 2.0f;
+    precise float scaled = high ? high_scaled : first_scaled;
     precise float value = overflow ? asfloat(0x7f800000u) : active ? scaled : 0.0f;
     return uint2(asuint(value), 1u);
   }
