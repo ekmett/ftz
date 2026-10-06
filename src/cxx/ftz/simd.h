@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
+// SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
 #pragma once
 // Included below the FTZ module declaration; all SIMD operations are dependent.
 
@@ -31,8 +33,8 @@ namespace ftz::detail {
     using U = ftz32_words<V>;
     return mask_bits<std::uint32_t>(U(ftz32_infinity) > (ftz32_bridge<V>::encode(v) & U(0x7fffffffu))) ^ U(0xffffffffu);
   }
-  template <class V, class... X>
-  [[nodiscard]] native_inline constexpr native_const ftz32_words<V> ftz32_repair_mask(V result, X...) noexcept {
+  template <class V>
+  [[nodiscard]] native_inline constexpr native_const ftz32_words<V> ftz32_repair_mask(V result) noexcept {
     using U = ftz32_words<V>;
     auto boundary_mask = mask_bits<std::uint32_t>((ftz32_bridge<V>::encode(result) & U(0x7fffffffu)) > U(0x00800000u)) ^ U(0xffffffffu);
     return boundary_mask;
@@ -75,8 +77,8 @@ namespace ftz::detail {
       (y & U(0x80000000u)) | U(0x43800000u));
     I shift = convert<std::int32_t>(floor(B::decode(bounded)));
     U biased = magnitude.template right<23>();
-    I adjusted = I::from_native(std::bit_cast<typename I::native_type>(biased.to_native())) + shift;
-    U fields = U::from_native(std::bit_cast<typename U::native_type>(adjusted.to_native()));
+    I adjusted = I::from_native(__builtin_bit_cast(typename I::native_type, biased.to_native())) + shift;
+    U fields = U::from_native(__builtin_bit_cast(typename U::native_type, adjusted.to_native()));
     U result = select((adjusted > I(0)) & (adjusted < I(255)),
       fields.template left<23>() | fraction,
       select(adjusted > I(254), U(0x7f800000u), U(0)));
@@ -99,23 +101,23 @@ namespace ftz::detail {
     if consteval { return ftz32_constant<ftz32_add<Hardware>>(a, b); }
     V r = a + b;
     if constexpr(Hardware) return r;
-    else return ftz32_repair<ftz32_add<Hardware>>(r, ftz32_repair_mask(r, a, b), a, b);
+    else return ftz32_repair<ftz32_add<Hardware>>(r, ftz32_repair_mask(r), a, b);
   }
   template <bool Hardware, class V> [[nodiscard]] native_inline constexpr native_const V ftz32_vector_sub(V a, V b) noexcept {
     if consteval { return ftz32_constant<ftz32_sub<Hardware>>(a, b); }
     V r = a - b;
     if constexpr(Hardware) return r;
-    else return ftz32_repair<ftz32_sub<Hardware>>(r, ftz32_repair_mask(r, a, b), a, b);
+    else return ftz32_repair<ftz32_sub<Hardware>>(r, ftz32_repair_mask(r), a, b);
   }
   template <class V> [[nodiscard]] native_inline constexpr native_const V ftz32_vector_mul(V a, V b) noexcept {
     if consteval { return ftz32_constant<ftz32_mul>(a, b); }
-    V r = a * b; return ftz32_repair<ftz32_mul>(r, ftz32_repair_mask(r, a, b), a, b);
+    V r = a * b; return ftz32_repair<ftz32_mul>(r, ftz32_repair_mask(r), a, b);
   }
   template <class V> [[nodiscard]] native_inline constexpr native_const V ftz32_vector_fma(V a, V b, V c) noexcept {
     if consteval { return ftz32_constant<ftz32_fma>(a, b, c); }
-    V r = fma(a, b, c); return ftz32_repair<ftz32_fma>(r, ftz32_repair_mask(r, a, b, c), a, b, c);
+    V r = fma(a, b, c); return ftz32_repair<ftz32_fma>(r, ftz32_repair_mask(r), a, b, c);
   }
-  // Same normalized three-refinement policy-3 graph as policy.h.
+  // Same normalized three-refinement graph as ftz/math/approx.h.
   // Every mantissa operation stays normal. Integer exponent scaling handles
   // ordinary results; unusual scales and IEEE-like special values use the core.
   template <bool Hardware, class V> [[nodiscard]] native_inline constexpr native_const V ftz32_vector_div(V a, V b) noexcept {
@@ -155,9 +157,7 @@ namespace ftz::detail {
     U exceptional = mask_bits<std::uint32_t>((aa == U(0)) | ((aw & U(0x80000000u)) > U(0))) | ftz32_nonfinite(a);
     return ftz32_repair<ftz32_sqrt>(B::decode(bits), exceptional, a);
   }
-}
 
-namespace ftz::detail {
   template <class V> concept raw_register = requires { typename V::value_type; typename V::bits_type; V::lanes; } && std::same_as<typename V::value_type,float>;
   template <class R> concept ftz32_vector = requires { typename R::value_type; typename R::register_type; } && ftz32_type<typename R::value_type>;
   template <class V, class F = ftz32> using ftz32_simd = typename V::template rebind<F>;
@@ -1027,12 +1027,8 @@ export namespace ftz {
     auto [value] = detail::ftz32_math::expm1(std::array{input});
     return value;
   }
-}
 
-
-export namespace ftz {
   namespace detail {
-    template <class R> inline constexpr bool ftz32_vector_value = ftz32_vector<R>;
     template <char Op, class V> [[nodiscard]] native_inline constexpr native_const V ftz32_native_binary(V a,V b) noexcept {
       if constexpr(Op=='+') return a+b;
       else if constexpr(Op=='-') return a-b;
@@ -1058,7 +1054,7 @@ export namespace ftz {
         auto const [...native] = std::array{ftz32_native_binary<Op>(x.to_native(), y.to_native())...};
         if constexpr (R::hardware && (Op == '+' || Op == '-'))
           return std::array{R::unsafe_from_float32(native)...};
-        auto const [...mask] = std::array{ftz32_repair_mask(native, x.to_native(), y.to_native())...};
+        auto const [...mask] = std::array{ftz32_repair_mask(native)...};
         constexpr auto repair = [] {
           if constexpr (Op == '+') return ftz32_add<R::hardware>;
           else if constexpr (Op == '-') return ftz32_sub<R::hardware>;
@@ -1082,8 +1078,7 @@ export namespace ftz {
         auto const & [...y] = b;
         auto const & [...z] = c;
         auto const [...native] = std::array{fma(x.to_native(), y.to_native(), z.to_native())...};
-        auto const [...mask] = std::array{ftz32_repair_mask(
-          native, x.to_native(), y.to_native(), z.to_native())...};
+        auto const [...mask] = std::array{ftz32_repair_mask(native)...};
         return std::array{R::unsafe_from_float32(ftz32_repair<ftz32_fma>(
           native, mask, x.to_native(), y.to_native(), z.to_native()))...};
       }
@@ -1100,14 +1095,14 @@ export namespace ftz {
   /// \ingroup ftz_register_arrays
   /// \brief Adds matching register arrays; a non-array operand is converted once and broadcast,
   /// with conversion noexcept retained. Returns std::array<R,N>.
-  template<class R, std::size_t N> requires detail::ftz32_vector_value<R>
+  template<class R, std::size_t N> requires detail::ftz32_vector<R>
   [[nodiscard]] native_inline constexpr std::array<R,N> add(std::array<R,N> const & a, std::array<R,N> const & b) noexcept {
     return detail::ftz32_array_binary<'+'>(a,b);
   }
   /// \ingroup ftz_register_arrays
   /// \brief Adds matching register arrays; a non-array operand is converted once and broadcast,
   /// with conversion noexcept retained. Returns std::array<R,N>.
-  template<class R, std::size_t N, class B> requires detail::ftz32_vector_value<R> && std::convertible_to<B const &,R>
+  template<class R, std::size_t N, class B> requires detail::ftz32_vector<R> && std::convertible_to<B const &,R>
   [[nodiscard]] native_inline constexpr std::array<R,N> add(std::array<R,N> const & a, B const & b)
       noexcept(std::is_nothrow_constructible_v<R,B const &>) {
     return add(a, detail::array_broadcast<R,N>(R(b)));
@@ -1115,7 +1110,7 @@ export namespace ftz {
   /// \ingroup ftz_register_arrays
   /// \brief Adds matching register arrays; a non-array operand is converted once and broadcast,
   /// with conversion noexcept retained. Returns std::array<R,N>.
-  template<class R, std::size_t N, class A> requires detail::ftz32_vector_value<R> && std::convertible_to<A const &,R>
+  template<class R, std::size_t N, class A> requires detail::ftz32_vector<R> && std::convertible_to<A const &,R>
   [[nodiscard]] native_inline constexpr std::array<R,N> add(A const & a, std::array<R,N> const & b)
       noexcept(std::is_nothrow_constructible_v<R,A const &>) {
     return add(detail::array_broadcast<R,N>(R(a)), b);
@@ -1123,14 +1118,14 @@ export namespace ftz {
   /// \ingroup ftz_register_arrays
   /// \brief Subtracts matching register arrays; a non-array operand is converted once and
   /// broadcast, with conversion noexcept retained. Returns std::array<R,N>.
-  template<class R, std::size_t N> requires detail::ftz32_vector_value<R>
+  template<class R, std::size_t N> requires detail::ftz32_vector<R>
   [[nodiscard]] native_inline constexpr std::array<R,N> sub(std::array<R,N> const & a, std::array<R,N> const & b) noexcept {
     return detail::ftz32_array_binary<'-'>(a,b);
   }
   /// \ingroup ftz_register_arrays
   /// \brief Subtracts matching register arrays; a non-array operand is converted once and
   /// broadcast, with conversion noexcept retained. Returns std::array<R,N>.
-  template<class R, std::size_t N, class B> requires detail::ftz32_vector_value<R> && std::convertible_to<B const &,R>
+  template<class R, std::size_t N, class B> requires detail::ftz32_vector<R> && std::convertible_to<B const &,R>
   [[nodiscard]] native_inline constexpr std::array<R,N> sub(std::array<R,N> const & a, B const & b)
       noexcept(std::is_nothrow_constructible_v<R,B const &>) {
     return sub(a, detail::array_broadcast<R,N>(R(b)));
@@ -1138,7 +1133,7 @@ export namespace ftz {
   /// \ingroup ftz_register_arrays
   /// \brief Subtracts matching register arrays; a non-array operand is converted once and
   /// broadcast, with conversion noexcept retained. Returns std::array<R,N>.
-  template<class R, std::size_t N, class A> requires detail::ftz32_vector_value<R> && std::convertible_to<A const &,R>
+  template<class R, std::size_t N, class A> requires detail::ftz32_vector<R> && std::convertible_to<A const &,R>
   [[nodiscard]] native_inline constexpr std::array<R,N> sub(A const & a, std::array<R,N> const & b)
       noexcept(std::is_nothrow_constructible_v<R,A const &>) {
     return sub(detail::array_broadcast<R,N>(R(a)), b);
@@ -1146,14 +1141,14 @@ export namespace ftz {
   /// \ingroup ftz_register_arrays
   /// \brief Multiplies matching register arrays; a non-array operand is converted once and
   /// broadcast, with conversion noexcept retained. Returns std::array<R,N>.
-  template<class R, std::size_t N> requires detail::ftz32_vector_value<R>
+  template<class R, std::size_t N> requires detail::ftz32_vector<R>
   [[nodiscard]] native_inline constexpr std::array<R,N> mul(std::array<R,N> const & a, std::array<R,N> const & b) noexcept {
     return detail::ftz32_array_binary<'*'>(a,b);
   }
   /// \ingroup ftz_register_arrays
   /// \brief Multiplies matching register arrays; a non-array operand is converted once and
   /// broadcast, with conversion noexcept retained. Returns std::array<R,N>.
-  template<class R, std::size_t N, class B> requires detail::ftz32_vector_value<R> && std::convertible_to<B const &,R>
+  template<class R, std::size_t N, class B> requires detail::ftz32_vector<R> && std::convertible_to<B const &,R>
   [[nodiscard]] native_inline constexpr std::array<R,N> mul(std::array<R,N> const & a, B const & b)
       noexcept(std::is_nothrow_constructible_v<R,B const &>) {
     return mul(a, detail::array_broadcast<R,N>(R(b)));
@@ -1161,7 +1156,7 @@ export namespace ftz {
   /// \ingroup ftz_register_arrays
   /// \brief Multiplies matching register arrays; a non-array operand is converted once and
   /// broadcast, with conversion noexcept retained. Returns std::array<R,N>.
-  template<class R, std::size_t N, class A> requires detail::ftz32_vector_value<R> && std::convertible_to<A const &,R>
+  template<class R, std::size_t N, class A> requires detail::ftz32_vector<R> && std::convertible_to<A const &,R>
   [[nodiscard]] native_inline constexpr std::array<R,N> mul(A const & a, std::array<R,N> const & b)
       noexcept(std::is_nothrow_constructible_v<R,A const &>) {
     return mul(detail::array_broadcast<R,N>(R(a)), b);
@@ -1169,7 +1164,7 @@ export namespace ftz {
   /// \ingroup ftz_register_arrays
   /// \brief Evaluates fused a*b+c in one FTZ policy; array results retain the same element type
   /// and extent. Returns std::array<R,N>.
-  template<class R, std::size_t N> requires detail::ftz32_vector_value<R>
+  template<class R, std::size_t N> requires detail::ftz32_vector<R>
   [[nodiscard]] native_inline constexpr std::array<R,N> fma(std::array<R,N> const & a,
       std::array<R,N> const & b, std::array<R,N> const & c) noexcept {
     return detail::ftz32_array_fma(a,b,c);
@@ -1216,12 +1211,6 @@ export namespace ftz {
     return detail::ftz32_math::sincos(input);
   }
 
-}
-
-// SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
-// SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
-
-export namespace ftz {
   /// \ingroup ftz_register_arrays
   /// \brief Computes hyperbolic tangent with the scalar FTZ graph, preserving signed zero and
   /// saturating infinities. Returns std::array<R,N>.
@@ -1249,9 +1238,7 @@ export namespace ftz {
     auto [result]=::ftz::tanh(std::array{input});
     return result;
   }
-}
 
-export namespace ftz {
   /// \ingroup ftz_register_arrays
   /// \brief Computes natural logarithms; either zero gives negative infinity, negative nonzero
   /// values give NaN. Returns std::array<R,N>.
@@ -1306,9 +1293,7 @@ export namespace ftz {
     auto [result]=::ftz::log1p(std::array{input});
     return result;
   }
-}
 
-export namespace ftz {
   /// \ingroup ftz_register_arrays
   /// \brief Computes atan2(y,x) in radians with the scalar FTZ signed-axis and infinity rules.
   /// Returns std::array<R,N>.
@@ -1337,9 +1322,7 @@ export namespace ftz {
     auto [result]=::ftz::atan2(std::array{y},std::array{x});
     return result;
   }
-}
 
-export namespace ftz {
   /// \ingroup ftz_vectors
   /// \brief Returns R::mask for NaN lanes by inspecting words; no FP evaluation or NaN quieting occurs.
   template<detail::ftz32_vector R>
@@ -1378,9 +1361,7 @@ export namespace ftz {
     return R::unsafe_from_float32(V::from_bits(
       (magnitude.to_bits() & U(0x7fffffffu)) | (sign.to_bits() & U(0x80000000u))));
   }
-}
 
-export namespace ftz {
   // Integral-valued results cannot be subnormal; preserve the raw rounding result.
   /// \ingroup ftz_vectors
   /// \brief Rounds toward negative infinity, independently of ambient rounding mode; signed

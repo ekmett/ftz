@@ -85,6 +85,15 @@ doxygen_add_docs(ftz_host_docs
   WORKING_DIRECTORY "${docs_markdown_root}"
   COMMENT "Build ftz host API documentation and examples")
 
+# Regenerate from empty output: Doxygen otherwise retains removed pages and
+# can make broken documentation appear intact. The shader target follows host.
+add_custom_target(ftz_docs_clean
+  COMMAND "${CMAKE_COMMAND}" -E rm -rf
+    "${PROJECT_BINARY_DIR}/docs/html" "${PROJECT_BINARY_DIR}/docs/xml"
+    "${PROJECT_BINARY_DIR}/docs/xml-shaders"
+  VERBATIM)
+add_dependencies(ftz_host_docs ftz_docs_clean)
+
 # Shader and host types deliberately share names. Give the shader interface its
 # own reference so the two languages never collapse into one misleading type.
 set(DOXYGEN_PROJECT_NAME "ftz shaders")

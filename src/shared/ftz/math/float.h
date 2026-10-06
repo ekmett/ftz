@@ -7,17 +7,6 @@
 #include <native/detail/constexpr_float.h>
 #endif
 
-// Selected for an entire compiled helper graph, never per arithmetic operation.
-// Explicit normalization is the default.
-// Hardware identity is suitable only where the caller has qualified the graph
-// and its native environment. It does not configure CPU or GPU FP controls.
-#ifndef FTZ_FP32_HARDWARE_FTZ
-#define FTZ_FP32_HARDWARE_FTZ 0
-#endif
-#if FTZ_FP32_HARDWARE_FTZ != 0 && FTZ_FP32_HARDWARE_FTZ != 1
-#error FTZ_FP32_HARDWARE_FTZ must be 0 or 1
-#endif
-
 namespace ftz { namespace detail { namespace math {
   [[nodiscard]] native_constexpr native_inline native_const float fp32_decode(unsigned int bits) {
 #ifdef __cplusplus
@@ -33,6 +22,8 @@ namespace ftz { namespace detail { namespace math {
     return asuint(value);
 #endif
   }
+  // The hardware policy applies to the whole graph. It skips explicit flushing
+  // only after the caller qualifies the FP environment; it sets no FP controls.
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
   native_constexpr inline float fp32_ftz(float value) {
 #ifdef __cplusplus

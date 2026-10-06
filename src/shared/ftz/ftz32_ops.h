@@ -151,11 +151,7 @@ namespace ftz { namespace detail {
 #include "ftz/math/atan2.h"
 #include "ftz/math/tanh.h"
 #include "ftz/math/log.h"
-#ifdef __cplusplus
 #include "ftz/math.h"
-#else
-#include "ftz/math.h"
-#endif
 namespace ftz { namespace detail {
   struct ftz32_trig_fraction { unsigned int words[9]; };
   struct ftz32_trig_reduction { unsigned int residual, quadrant; };

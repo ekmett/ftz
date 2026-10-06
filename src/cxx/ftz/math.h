@@ -1,5 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
 // SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
+/** \file
+ * \brief Host implementations of FTZ math for scalar and SIMD register packs.
+ *
+ * Range reduction, polynomial evaluation and result reconstruction follow the
+ * shared FTZ operation order. This includes the cancellation-safe expm1 and
+ * damping-gain helpers.
+ */
 #pragma once
 #include <native/attributes.h>
 #include <ftz/config.h>
@@ -30,20 +37,17 @@ namespace ftz::detail::native {
       using U = typename V::bits_type;
       using I = typename V::template rebind<std::int32_t>;
       static constexpr native_inline U integer(V value) noexcept {
-        return U::from_native(std::bit_cast<typename U::native_type>(convert<std::int32_t>(value).to_native()));
+        return U::from_native(__builtin_bit_cast(typename U::native_type, convert<std::int32_t>(value).to_native()));
       }
       static constexpr native_inline V floating(U value) noexcept {
-        return convert<float>(I::from_native(std::bit_cast<typename I::native_type>(value.to_native())));
+        return convert<float>(I::from_native(__builtin_bit_cast(typename I::native_type, value.to_native())));
       }
     };
-    template <class V> constexpr native_inline V min(V a,V b) noexcept { return select(a<b,a,b); }
     template <class V> constexpr native_inline V max(V a,V b) noexcept { return select(a>b,a,b); }
   }
-}
 
 // FTZ owns one host/shader exponential graph. Its finite overflow endpoint
 // matches native::exp<true>; reconstruction alone is instruction-specific.
-namespace ftz::detail::native {
   namespace detail {
     template <float_register V>
     constexpr native_inline V exp_factor(V biased) noexcept {
@@ -125,12 +129,10 @@ namespace ftz::detail::native {
   }
   template <unsigned int Degree = 6, float_register V> requires (Degree >= 1 && Degree <= 7)
   constexpr native_inline V exp_ftz(V input) noexcept { return exp_ftz<Degree>(std::array{input})[0]; }
-}
 
 // Altered source: paired polynomial and reducer with signed input FTZ,
 // explicit tiny-input selection and bitwise reconstruction. Notices are retained below.
 // Require binary32 RNE, native fused fma and no implicit expression contraction.
-namespace ftz::detail::native {
   enum class trig_output { sine, cosine, pair };
   namespace detail {
     template <trig_output Output, bool Hardware, bool Bounded, float_register V, std::size_t N>
@@ -324,17 +326,11 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/**
- * \file
- * \license
- * SPDX-FileType: SOURCE
+/*
  * SPDX-FileCopyrightText: 2012 Giovanni Garberoglio
  * SPDX-FileCopyrightText: 2017 Edward Kmett
  * SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
  * SPDX-License-Identifier: Zlib AND BSD-2-Clause
- * \endlicense
- * \author Edward Kmett <ekmett@gmail.com>
- * \brief Sine and cosine polynomials, range reduction, and raw or FTZ register-pack evaluation.
  */
 
 namespace ftz::detail::native {
@@ -445,9 +441,7 @@ namespace ftz::detail::native {
     auto r = damping_gain_checked<Hardware>(fp32x1(input));
     return {r.value.value, r.valid.value};
   }
-}
 
-namespace ftz::detail::native {
   // Same live Horner chains as the scalar tanh graph, selected per lane.
   // Input comes from typed FTZ values: normal/signed zero/infinity/any NaN.
   // This is a prechecked graph, not an entry point for raw subnormal inputs.
@@ -494,28 +488,28 @@ namespace ftz::detail::native {
         }
 #if defined(__x86_64__) || defined(_M_X64)
         else if constexpr(U::lanes<=8) {
-          auto table=std::bit_cast<__m256i>(std::array{c0,c1,c2,c3,c4,c5,c6,c6});
+          auto table=__builtin_bit_cast(__m256i, std::array{c0,c1,c2,c3,c4,c5,c6,c6});
           if constexpr(U::lanes<=4) {
-            auto i=_mm256_zextsi128_si256(std::bit_cast<__m128i>(index.to_native()));
+            auto i=_mm256_zextsi128_si256(__builtin_bit_cast(__m128i, index.to_native()));
             auto bits=_mm256_castsi256_si128(_mm256_permutevar8x32_epi32(table,i));
-            return B::decode(U::from_native(std::bit_cast<typename U::native_type>(bits)));
+            return B::decode(U::from_native(__builtin_bit_cast(typename U::native_type, bits)));
           } else {
-            auto bits=_mm256_permutevar8x32_epi32(table,std::bit_cast<__m256i>(index.to_native()));
-            return B::decode(U::from_native(std::bit_cast<typename U::native_type>(bits)));
+            auto bits=_mm256_permutevar8x32_epi32(table,__builtin_bit_cast(__m256i, index.to_native()));
+            return B::decode(U::from_native(__builtin_bit_cast(typename U::native_type, bits)));
           }
         } else {
-          auto table=std::bit_cast<__m512i>(std::array{c0,c1,c2,c3,c4,c5,c6,c6,c0,c1,c2,c3,c4,c5,c6,c6});
-          auto bits=_mm512_permutexvar_epi32(std::bit_cast<__m512i>(index.to_native()),table);
-          return B::decode(U::from_native(std::bit_cast<typename U::native_type>(bits)));
+          auto table=__builtin_bit_cast(__m512i, std::array{c0,c1,c2,c3,c4,c5,c6,c6,c0,c1,c2,c3,c4,c5,c6,c6});
+          auto bits=_mm512_permutexvar_epi32(__builtin_bit_cast(__m512i, index.to_native()),table);
+          return B::decode(U::from_native(__builtin_bit_cast(typename U::native_type, bits)));
         }
 #elif defined(__aarch64__) || defined(_M_ARM64)
         else {
-          uint8x16x2_t table{{std::bit_cast<uint8x16_t>(std::array{c0,c1,c2,c3}),
-            std::bit_cast<uint8x16_t>(std::array{c4,c5,c6,c6})}};
-          auto i=std::bit_cast<uint32x4_t>(index.to_native());
+          uint8x16x2_t table{{__builtin_bit_cast(uint8x16_t, std::array{c0,c1,c2,c3}),
+            __builtin_bit_cast(uint8x16_t, std::array{c4,c5,c6,c6})}};
+          auto i=__builtin_bit_cast(uint32x4_t, index.to_native());
           auto offsets=vaddq_u32(vmulq_n_u32(i,0x04040404u),vdupq_n_u32(0x03020100u));
           auto bits=vqtbl2q_u8(table,vreinterpretq_u8_u32(offsets));
-          return B::decode(U::from_native(std::bit_cast<typename U::native_type>(bits)));
+          return B::decode(U::from_native(__builtin_bit_cast(typename U::native_type, bits)));
         }
 #endif
       };
@@ -546,9 +540,7 @@ namespace ftz::detail::native {
       return {{B::decode(result)...}};
     }
   }
-}
 
-namespace ftz::detail::native {
   // Word admission and range reduction feed one copy of the scalar log1p
   // polynomial. Direct log1p lanes select their original argument; other lanes
   // select the reduced mantissa. No lane is evaluated by a scalar fallback.
@@ -617,7 +609,7 @@ namespace ftz::detail::native {
       ((h=fma(h,t,coefficient(negative,0xbf1a5884u,0xbec19b82u))),...);
       auto const [...polynomial]=std::array{fma(square,h,argument)...};
       auto const [...e]=std::array{convert<float>(I::from_native(
-        std::bit_cast<typename I::native_type>(exponent.to_native())))...};
+        __builtin_bit_cast(typename I::native_type, exponent.to_native())))...};
       auto const [...low]=std::array{fma(e,B::decode(U(0x35bfbe8eu)),polynomial)...};
       auto [...result]=std::array{B::encode(fma(e,B::decode(U(0x3f317200u)),low))...};
       if constexpr (OnePlus) {
@@ -636,9 +628,7 @@ namespace ftz::detail::native {
       return {{B::decode(result)...}};
     }
   }
-}
 
-namespace ftz::detail::native {
   // The normalized reciprocal and polynomial follow the scalar atan2 graph.
   // Inputs are canonical FTZ values. Bit-built mantissas stay in [1,2) even
   // for axis/nonfinite lanes, whose outputs are reconstructed at the end.
@@ -653,7 +643,7 @@ namespace ftz::detail::native {
     else {
       auto constant=[](unsigned word) noexcept {return B::decode(U(word));};
       auto integer=[](U word) noexcept {
-        return I::from_native(std::bit_cast<typename I::native_type>(word.to_native()));
+        return I::from_native(__builtin_bit_cast(typename I::native_type, word.to_native()));
       };
       auto const & [...y]=y_input;
       auto const & [...x]=x_input;
