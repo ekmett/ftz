@@ -28,16 +28,16 @@ export namespace ftz {
   struct native_fp_state {
     std::uint64_t control, status;
     /// \brief Compares both control and status words exactly.
-    friend bool operator==(native_fp_state const &, native_fp_state const &) = default;
+    [[nodiscard]] friend bool operator==(native_fp_state const &, native_fp_state const &) = default;
   };
   /// \ingroup ftz_environment
   /// \brief Reports whether this build can access native CPU FP controls; this is not numerical
   /// admission.
-  bool native_fp32_environment_available() noexcept;
+  [[nodiscard]] bool native_fp32_environment_available() noexcept;
   /// \ingroup ftz_environment
   /// \brief Reads this thread's controls and status without changing them; unsupported hosts
   /// return zero fields.
-  native_fp_state read_native_fp_state() noexcept;
+  [[nodiscard]] native_fp_state read_native_fp_state() noexcept;
 
   // Application-owned numerical thread entry: set RNE, masked exceptions,
   // clear status flags and select denormal handling. No qualification, owner
@@ -58,7 +58,7 @@ export namespace ftz {
    * be copied or moved. Construction throws on invalid/unavailable controls when
    * exceptions are enabled; otherwise it terminates. Destruction is noexcept.
    */
-  struct native_fp32_scope {
+  struct [[nodiscard]] native_fp32_scope {
   private:
     native_fp_state previous_, requested_;
     std::thread::id owner_;
@@ -76,18 +76,18 @@ export namespace ftz {
     /// \brief Disallows transfer of a guard whose restoration belongs to its constructing thread.
     native_fp32_scope & operator=(native_fp32_scope &&) = delete;
     /// \brief Returns the state captured before this numerical region.
-    native_fp_state previous() const noexcept { return previous_; }
+    [[nodiscard]] native_fp_state previous() const noexcept { return previous_; }
     /// \brief Returns the controls and initially clear status requested by construction.
-    native_fp_state requested() const noexcept { return requested_; }
+    [[nodiscard]] native_fp_state requested() const noexcept { return requested_; }
     /// \brief Checks thread identity and controls; accrued exception status does not cause failure.
-    bool controls_match() const noexcept;
+    [[nodiscard]] bool controls_match() const noexcept;
 
     // Restore the environment agreed with the caller while invoking external
     // code; restore this numerical region's current state on return/unwind.
     /// \brief Temporarily restores the enclosing region's caller environment for external code.
     /// Saves the current numerical state and reinstates it on return or unwind.
     /// The enclosing region must outlive this guard; both guards belong to the same thread.
-    struct external_scope {
+    struct [[nodiscard]] external_scope {
     private:
       native_fp_state previous_;
       std::thread::id owner_;
@@ -233,9 +233,9 @@ export namespace ftz {
     bool explicit_core_exact = false, controls_stable = false;
     ftz::native_fp_state before{}, after{};
     /// \brief Reports whether every requirement of the requested policy passed.
-    bool admitted() const noexcept { return failure == ftz32_cpu_failure::none; }
+    [[nodiscard]] bool admitted() const noexcept { return failure == ftz32_cpu_failure::none; }
     /// \brief Reports explicit-policy compatibility without requiring hardware signed flushing.
-    bool explicit_compatible() const noexcept {
+    [[nodiscard]] bool explicit_compatible() const noexcept {
       return normal_rne && fused_fma && separate_rounding && explicit_core_exact && controls_stable;
     }
   };
@@ -245,7 +245,7 @@ export namespace ftz::detail {
   struct ftz32_cpu_witness { unsigned int operation, a, b, c, expected; };
   enum class ftz32_cpu_path { raw, compiled_core, explicit_core };
   using ftz32_cpu_evaluator = unsigned int (*)(ftz32_cpu_witness, ftz32_cpu_path);
-  ftz32_cpu_admission ftz32_cpu_probe(ftz32_cpu_evaluator evaluate, bool hardware_ftz);
+  [[nodiscard]] ftz32_cpu_admission ftz32_cpu_probe(ftz32_cpu_evaluator evaluate, bool hardware_ftz);
 }
 namespace ftz::detail {
 

@@ -10,7 +10,7 @@ namespace ftz { namespace detail { namespace math {
   // on hardware's ambiguous minimum-normal rounding strip. RNE and real fused
   // FMA are required; no implicit contraction/reassociation is admitted.
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  native_nodiscard native_inline native_const unsigned int tanh_words(unsigned int word) {
+  [[nodiscard]] native_inline native_const unsigned int tanh_words(unsigned int word) {
     unsigned int magnitude = word & 0x7fffffffu;
     unsigned int sign = word & 0x80000000u;
     if (magnitude > 0x7f800000u) {
@@ -128,7 +128,7 @@ namespace ftz { namespace detail { namespace math {
     return (rounded_magnitude > 0x3f800000u ? 0x3f800000u : rounded_magnitude) | sign;
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  native_nodiscard native_inline native_const float tanh(float value) {
+  [[nodiscard]] native_inline native_const float tanh(float value) {
     return fp32_decode(tanh_words<Hardware>(fp32_encode(value)));
   }
 }}}
