@@ -38,9 +38,7 @@ set(DOXYGEN_ALIASES "license=@code{.spdx}" "endlicense=@endcode"
 # Paired backticks in the historical license denote quotation marks; escape
 # them for Doxygen without a shell filter (whose quoting differs on Windows).
 set(docs_markdown_root "${CMAKE_CURRENT_BINARY_DIR}/markdown")
-set(docs_pages README.md LICENSE.md CODE_OF_CONDUCT.md src/README.md tests/api/README.md
-  tests/shader_add/README.md tests/rounding/README.md tests/shaders/README.md
-  tests/exp_shader/README.md tests/exp_fit/README.md tests/isa_profiles/README.md)
+set(docs_pages README.md LICENSE.md CODE_OF_CONDUCT.md src/README.md tests/api/README.md)
 file(GLOB_RECURSE docs_guides CONFIGURE_DEPENDS RELATIVE "${PROJECT_SOURCE_DIR}"
   "${PROJECT_SOURCE_DIR}/docs/*.md")
 list(APPEND docs_pages ${docs_guides})

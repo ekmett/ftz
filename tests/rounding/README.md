@@ -16,7 +16,7 @@ the ambient mode, not the rest of FTZ arithmetic outside its nearest-even contra
 Empty arrays/wides and one-conversion forwarding are included. Typed codegen
 entry points isolate the rounding operation from float-import normalization.
 
-Configure this directory against installed matching FTZ and SIMD packages;
+Configure this directory against installed matching FTZ and native packages;
 set `ROUNDING_PROFILES=AVX2;AVX512` or `NEON` for admitted architectures, build,
 and run CTest. No GPU execution is involved.
 
@@ -34,9 +34,3 @@ integer-oracle bank without executing floating-point work. It writes
 The first three output columns compare non-NaN words exactly and require a NaN
 for a NaN expectation; NaN payload/sign need not match. The echo column must
 match exactly. This shares the CPU oracle rather than maintaining a second graph.
-
-On 2026-09-17, the shared 276-record bank passed both shader policies on an RTX
-4090 using the HLSL 2021/DXC Vulkan path at source `2c0da07`. All non-NaN results,
-signed zeros and input echoes matched the integer oracle; input/tail guards and
-Vulkan validation passed. This is sampled device execution evidence. SPIR-V was
-translated to Metal source, but no Metal compilation or execution is claimed.

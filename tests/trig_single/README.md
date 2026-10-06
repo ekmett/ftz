@@ -31,7 +31,7 @@ policies. Reduced single-output calls instantiate just one polynomial. Bounded
 vectors still need both polynomials because different lanes can occupy different
 quadrants; only the unused output reconstruction/wrapping/repair is absent by
 construction. The public full-range scalar repair selects the needed reduced
-polynomial using its known quadrant parity. Shader trig remains unchanged.
+polynomial using its known quadrant parity.
 
 To compare a prior package, configure the same fixture into a second build with
 that package's explicit `ftz_DIR`; compare `pair-*.bin` and disassemble the
@@ -66,35 +66,3 @@ checksum. Its zero/one/all banks use bounded inputs or large finite inputs.
 Benchmark matched baseline/candidate packages with the same compiler settings,
 repeat in alternating order, and report each density separately; a source-level
 sharing change alone does not establish a speedup.
-
-### Windows AVX2 / AVX-512 checkpoint
-
-Against FTZ `4ba71e2` with the same SIMD `36b9319`, LLVM 23.1.1 on Ryzen 9
-7950X3D passes all 38 native CTests. The expanded trig fixture also passes against
-the baseline package: 481,128 AVX2 and 782,376 AVX-512 packet words match exactly,
-with no NaN representation differences. Both packages enable exceptions, PCH
-and IPO; the code-generation and timing consumers disable IPO.
-
-Each generated paired consumer contains one eight-limb full-range reducer,
-replacing two. The static integer-multiply count falls from 16 to 8 per consumer.
-The AVX2 manual/hardware functions shrink from 4,873/4,824 to 2,974/2,964 bytes;
-AVX-512 shrinks from 4,928/4,865 to 2,877/2,848 bytes. The existing reduced/bounded
-single-output and pair probes retain identical instruction dumps.
-
-The following are median paired candidate/baseline time ratios from 21
-alternating runs, pinned to one logical CPU, with 100,000 pairs per sample and
-matching output checksums. Less than one is faster. Other coordinated local
-builds and physics work were held for the timed interval.
-
-| Profile / policy | No repairs | One repair | All lanes repair |
-| --- | ---: | ---: | ---: |
-| AVX2 manual | 0.990 | 0.534 | 0.526 |
-| AVX2 hardware | 1.002 | 0.536 | 0.510 |
-| AVX-512 manual | 0.984 | 0.507 | 0.526 |
-| AVX-512 hardware | 1.017 | 0.426 | 0.522 |
-
-Every one/all-repair sample favors the candidate. No general bounded-path
-speedup is claimed: its small differences include an observed 1.7% median
-paired increase for AVX-512 hardware policy. These timings cover the fixed
-large-finite benchmark bank on this CPU, not every exceptional value or backend.
-NEON execution remains a separate validation requirement.

@@ -42,11 +42,10 @@ multiply-adds, plus two reduction FMAs. Compile-time selection
 adds no runtime branch. Every degree uses the same reduction, cutoffs, scaling
 and NaN-payload exception; the degree selects only the polynomial.
 
-The [validation record](../../docs/validation.md) reports actual scalar, SIMD,
-array, wide and Metal checks for each degree. Its bit agreement concerns the
-specified FTZ graph, and does not make a correctly-rounded libm or exhaustive
-accuracy claim. Native MPFR experiments describe a separate validation scope
-from these FTZ execution results.
+The [validation guide](../../docs/validation.md) describes the scalar, SIMD,
+array, wide and Metal checks for each degree. They compare the specified FTZ
+graph, not correctly rounded libm results. Native MPFR experiments measure
+mathematical accuracy separately.
 
 These fitting scripts and degrees 1–6 are project work under the repository's
 dual BSD-2-Clause/Apache-2.0 license. The degree-seven coefficient words are

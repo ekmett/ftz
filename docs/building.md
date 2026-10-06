@@ -47,7 +47,7 @@ refer to the same hub, not separate profile archives.
 FTZ's numerical helpers use the consuming translation unit's native ISA
 settings. Keep `native_target_profile` on those consumers and admit the selected
 ISA before entry. Importing the hub does not perform admission or configure the
-thread's FP controls. Controls-only consumers inherit the configured SIMD
+thread's FP controls. Controls-only consumers inherit the configured native
 package minimum without an additional numerical profile. That minimum defaults
 to the compiler target baseline; the dependency
 build can configure it through `NATIVE_MINIMAL_COMPILE_OPTIONS`. Applications must
@@ -57,7 +57,7 @@ admit that minimum too. Include both installed package prefixes in
 Native vectors use `native::simd<T,N,Arch>`. Architecture values have type
 `native::isa<Family>`, with `native::isa<>` denoting the compiler target family.
 An ARM or Wasm value cannot select an x86 register backend, and vice versa.
-Omitting `Arch` uses the baseline captured by the SIMD module provider; stronger
+Omitting `Arch` uses the baseline captured by the native module provider; stronger
 vectors need an explicit admitted feature set such as `native::avx2` or
 `native::neon`. Keep one compatible module build throughout an application.
 
@@ -69,49 +69,12 @@ New code can name its policy directly.
 
 ## Compiler caching
 
-Native CI uses sccache 0.16.0 for the SIMD dependency and FTZ producer builds,
-with Mozilla's commit-pinned
-[action](https://github.com/Mozilla-Actions/sccache-action/tree/fc920bf0ec8de6ee65d409111f7ec508035751ba)
-and the GitHub Actions cache backend. The action checks the release archive's
-published checksum and supplies cache service credentials; repository permissions
-remain `contents: read` and no additional secrets are needed. Advanced and JSON
-statistics are retained with package diagnostics, including failed builds when
-cache setup succeeded. They cover both producers; the relocated package/API
-consumers deliberately configure without a cache launcher.
-
-On Linux and macOS, a conservative
-[launcher](https://github.com/ekmett/ftz/blob/main/.github/scripts/sccache_launcher.py) expands recognized CMake
-`.modmap` response arguments before sccache. CMake quotes module paths, which
-otherwise trigger the pinned cache's `@` bypass. The launcher accepts only
-`-x c++-module`, quoted module output paths and named module input paths with
-simple nonempty ASCII values. It expands argv without changing CMake's files.
-Unknown syntax, whitespace inside values, malformed/compound quotes, escapes,
-nested/other response files or size limits preserve the original compiler
-arguments and bypass caching directly. An `E2BIG` retry also executes the
-original compiler directly. This is not a general response-file parser.
-Only POSIX compiler names `clang` and `clang++`, optionally followed by a
-numeric version suffix, enter this cache path. Other names, including
-`c++` and target-prefixed Clang aliases, execute the original compiler
-arguments directly without caching so they cannot bypass PCH input hashing.
-
-Explicit `-include-pch` binary inputs, including CMake's `-Xclang` spelling,
-are appended to `SCCACHE_EXTRAFILES`; existing entries are preserved. The
-pinned sccache version does not otherwise hash these PCH binaries, which can
-leave a cached module referring to a different PCH. Ambiguous or missing PCH
-inputs bypass caching. Windows uses the same launcher and bypasses caching for
-module/PCH inputs,
-opaque response files and unknown compiler names. Ordinary clang-cl translation
-units remain cacheable. The child compiler's exit status is preserved on both
-direct and cached paths.
-
-The launcher and tests are shared with SIMD; keep the implementations aligned.
-All platforms run `test_sccache_launcher.py`. POSIX CI also runs the real
-PCH/module warm-cache fixture `test_sccache_pch.py`; Windows runs
-`test_sccache_modules.py`, which changes a module implementation while retaining
-the importer source and separately verifies an ordinary warm cache hit. Neither
-disables PCH validation. See the
-[validation boundary](https://github.com/ekmett/ftz/blob/main/docs/validation.md#pch-dependent-module-invalidation)
-for the cache invalidation checks.
+CI uses sccache for native and FTZ producer builds. Installed consumer checks
+run without a cache launcher. The repository's launcher includes explicit PCH
+inputs in the cache key and bypasses caching for module/PCH arguments it cannot
+safely interpret, including opaque Windows response files. Ordinary Windows
+translation units remain cacheable. See [validation](validation.md) for the
+invalidation checks.
 
 For local producer builds, install sccache separately and put it on `PATH`.
 Add `-DCMAKE_CXX_COMPILER_LAUNCHER=sccache` for its normal local disk cache, or
@@ -130,8 +93,8 @@ To measure reuse, build and run CTest, record cache statistics, clean the build
 outputs, run `sccache --zero-stats`, then rebuild and test with the same paths
 and compiler. A no-op incremental build does not exercise caching. Dependency
 scanning, linking and some CMake-generated BMI commands remain outside the
-launcher. [Validation](https://github.com/ekmett/ftz/blob/main/docs/validation.md#compiler-cache) records the actual cache
-coverage and timing limits; successful builds alone do not establish hosted
+launcher. [Validation](validation.md) describes the cache
+checks; successful builds alone do not establish hosted
 cache reuse or a speedup.
 
 ## API reference
@@ -141,7 +104,7 @@ compiled consumers for the examples. Generating the documentation does not
 execute those consumers or qualify a numerical environment.
 
 Doxygen 1.18 builds separate host and HLSL references from the public interfaces,
-with compiled example snippets. An installed SIMD header package is enough for
+with compiled example snippets. An installed native header package is enough for
 a documentation-only build:
 
 ```sh
@@ -162,7 +125,7 @@ and [shader headers](shaders.md) for a language-free package.
 
 The [Documentation workflow](https://github.com/ekmett/ftz/blob/main/.github/workflows/docs.yml) builds both references
 on pull requests and publishes them to [GitHub Pages](https://ekmett.github.io/ftz/)
-after a push to main. It pins Doxygen and the SIMD dependency, treats documentation
+after a push to main. It pins Doxygen and the native dependency, treats documentation
 warnings as errors, and checks generated links before uploading the site.
 Generated HTML stays in the build and deployment artifacts, outside the source tree.
 
@@ -189,13 +152,10 @@ to a path containing spaces before consumer builds. A passing hosted run qualifi
 that runner and revision, not every CPU sharing its architecture. AVX-512 and GPU execution are outside this workflow.
 
 Windows uses native, checksum-pinned LLVM 23.1.1, CMake 4.4.3 and Ninja 1.13.2
-with the matching Visual Studio SDK environment. The setup action is copied from
-native `8f69034`; the numerical dependency has its own explicit revision pin.
+with the matching Visual Studio SDK environment. The workflow pins the native
+dependency revision.
 
-Intel macOS is deferred until a qualified LLVM 23 toolchain artifact is available.
-The hosted image supplies older Clang versions, Homebrew has no Intel LLVM 23
-bottle, and the inspected official LLVM 23 releases provide macOS ARM64 archives
-only. A full LLVM source bootstrap is not part of each package test run.
+Intel macOS, AVX-512 and GPU execution are not in this hosted matrix.
 
 ## Optional MPFR accuracy tests
 

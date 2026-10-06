@@ -28,8 +28,8 @@ Select only admitted CPU profiles; Apple uses `-DLOG_PROFILES=NEON` and its
 supported Clang driver. This fixture does not dispatch at runtime.
 
 The native kernel uses one sign-selected Horner chain per lane. The negative
-coefficient list is zero-padded only before its original live chain; no live
-coefficient or recurrence is changed. `log1p` selects either its direct argument
+coefficient list is zero-padded before its live chain to match the positive
+chain length. `log1p` selects either its direct argument
 or the mantissa reduction of the scalar graph's rounded `1+x` before that chain.
 Special values and tiny results are reconstructed with word masks. There is no
 per-lane scalar fallback or memory gather.
@@ -45,8 +45,7 @@ correct rounding of the transcendental functions.
 
 `codegen.cc` exposes ordinary optimized non-LTO single-register and three-register
 wide entry points. Inspect calls and register pressure separately; Windows ABI
-saves should not be mistaken for arithmetic spills. The scalar/shared/HLSL
-implementations are unchanged by this native addition.
+saves should not be mistaken for arithmetic spills.
 
 Pass an optional output path to capture the scalar and common native widths
 1/2/3/4 as little-endian binary32 words. Larger widths still run their checks
@@ -99,10 +98,10 @@ ephemeral runner and retains its report. Other native lanes leave the option
 disabled. The measured envelope and retained worst-case inputs must be read
 with their compiler/profile/sample scope, never as exhaustive bounds.
 
-The four measured worst inputs from the first Linux run are explicitly retained
+The four measured worst inputs from the MPFR measurements are explicitly retained
 even if the sampling bank later changes. Their MPFR reference words, integer
 ULP-distance ceilings and absolute-error ceilings are checked under every
 policy/mode. Improvements pass; larger errors at those cases fail. These
 per-case regression budgets are not asserted as bounds on all inputs. See the
-[measured envelope](https://github.com/ekmett/ftz/blob/main/docs/validation.md#independent-log-accuracy-oracle)
-for exact words, toolchain, hardware and scope.
+[validation guide](../../docs/validation.md)
+for the retained words and the limits of these checks.

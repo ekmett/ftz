@@ -24,12 +24,12 @@ ctest --test-dir build/values --output-on-failure
 
 Choose only admitted CPU profiles; Apple uses NEON and its supported Clang
 driver. `codegen.cc` exposes the four classifiers and sign transport for ordinary
-strict codegen inspection. No arithmetic graph or scalar policy is changed.
+strict codegen inspection.
 
-`wide.cc` consumes the generic `simd.wide` classification and homogeneous
+`wide.cc` consumes the generic `native::wide` classification and homogeneous
 `copysign` lifts. It checks scalar bool and actual native mask result types,
 empty/single/three-register packs, both FTZ types, exact zero/NaN sign and payload
 transport, and unchanged FP status. Short two/three-lane owning swizzles and
 in-place overlap preserve unsafe typed words, including subnormals; these words
-are used only for transport. These tests require a SIMD package with the generic
+are used only for transport. These tests require a native package with the generic
 wide value utilities.

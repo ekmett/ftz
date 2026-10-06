@@ -26,14 +26,14 @@ build/atan2/atan2_avx2 capture.bin
 Select only CPU profiles admitted by the host; Apple uses NEON and its supported
 Clang driver. The fixture does not perform runtime dispatch. An optional path
 writes the same vector4 output bank on AVX2, AVX512 and NEON, allowing exact
-non-NaN cross-architecture comparison. The package needs SIMD's generic wide atan2 forwarding.
+non-NaN cross-architecture comparison. The package needs native's generic wide atan2 forwarding.
 
 The native graph preserves the scalar bit-derived reciprocal seed, three Newton
-steps, mantissa multiply and integer rescaling before the unchanged eight-term
+steps, mantissa multiply and integer rescaling before the eight-term
 Horner polynomial. It uses no per-lane fallback, division or reciprocal estimate
 instruction. Tiny hardware lanes may evaluate unobserved underflowing stages;
 manual lanes mask them. Axis/infinity/NaN and quadrant handling is word-based.
-The scalar and HLSL implementations are unchanged.
+
 
 `verify_bounds.py` checks native coefficient words and the three refinement
 steps, bounds the exact seed pieces and rounded Newton residuals, then proves

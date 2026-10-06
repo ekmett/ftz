@@ -1,7 +1,7 @@
 # FTZ regression fixtures
 
-These imported-module consumers retain the arithmetic banks, integer scaling
-reference, lane order and tail checks from the original integrated fixtures.
+These imported-module consumers check arithmetic, integer scaling, lane order
+and tails.
 The only intended numerical equivalence is identical non-NaN binary32 bits;
 NaN signs and payloads are outside the contract. Signed zeros remain exact.
 
@@ -15,7 +15,7 @@ has a native scaling instruction; typed FTZ scaling remains available.
 `noexcept_ftz` retains discarded-result conversion side effects and tests real
 exception propagation/cleanup when `FTZ_ENABLE_EXCEPTIONS=ON`.
 
-The consumer capture preserves the original mixed raw/FTZ output order. It is
+The consumer capture records mixed raw/FTZ outputs. It is
 an artifact for exact comparisons, not an accuracy or performance claim.
 Tests compile against the selected `FTZ_TEST_ISA` provider; hardware-policy
 builds retain the gradual-mode admission rejection control.

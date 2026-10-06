@@ -67,8 +67,8 @@ can still choose `float` for two different policy types: retaining implicit
 conversion to float makes those language-level escapes unavoidable. Keep both
 branches of a numerical conditional in the same type.
 
-See [math kernels and platform work](math-kernels.md) for exponential
-reconstruction and the ordered plan for the remaining kernels.
+See [math functions and implementation](math-kernels.md) for the available
+operations, their algorithms and range behavior.
 
 ## CPU environment and admission
 
@@ -103,11 +103,5 @@ Use `native_fp32_scope` when borrowing a caller's thread. Keep the scope and its
 environment for third-party code, then reinstates the numerical region on return
 or unwind. These APIs manage CPU state; GPU qualification is separate.
 
-## Unimplemented formats
-
-`ftz::m16` and `ftz::h16` are reserved for future reproducible BF16 arithmetic
-without subnormal values. They are not implemented. Rounding, intermediate
-precision and fused-operation rules need a separate contract.
-
-See [validation](validation.md) for the measured scope of the arithmetic and
+See [validation](validation.md) for the arithmetic and
 admission checks, and [shader policies](shaders.md) for the independent GPU contract.

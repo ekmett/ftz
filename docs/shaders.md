@@ -15,7 +15,7 @@ HLSL includes `<ftz/ftz32.h>` and uses `ftz::ftz32`. Compile in HLSL 2021 mode.
 and preserve the wrapper type without an additional normalization pass.
 `FTZ_FP32_HARDWARE_FTZ=0` retains explicit normalization; `=1` selects the admitted
 hardware path. Choose the compiled shader variant after device qualification,
-including [signed tiny-result add/subtract checks](../tests/shader_add/README.md).
+including [signed tiny-result add/subtract checks](https://github.com/ekmett/ftz/blob/main/tests/shader_add/README.md).
 The hardware path uses native addition/subtraction directly; a failed raw sign
 check requires the explicit variant.
 Shader policy selection is independent of the CPU type and thread environment.
@@ -23,10 +23,10 @@ Shader policy selection is independent of the CPU type and thread environment.
 portable alternative.
 
 The [complete shader example](../tests/api/README.md) shows the public factories
-and a compute entry point. The [installed shader consumer](../tests/shaders/README.md)
+and a compute entry point. The [installed shader consumer](https://github.com/ekmett/ftz/blob/main/tests/shaders/README.md)
 checks exported include roots and header dependency tracking after relocation.
 
 DXC compilation, SPIR-V validation and SPIRV-Cross translation establish a
-compiler path. The [device records](validation.md) separately
-state the RTX and native Metal execution scope, guards and permitted differences.
-They are not throughput measurements or a claim about every GPU.
+compiler path. The [validation guide](validation.md) describes the separate numerical device
+checks, guards and permitted differences. Translation alone does not establish
+correct execution or throughput on a GPU.

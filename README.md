@@ -80,8 +80,8 @@ or explicitly calling standard math leaves the FTZ contract.
 
 The [arithmetic guide](docs/arithmetic.md) spells out conversion escapes, unsafe
 bit transport, mixed-policy rejection, admission and thread restoration.
-The [validation record](docs/validation.md) states which compilers, profiles,
-input banks and devices were checked, including the limits of packet equality.
+The [validation guide](docs/validation.md) describes the maintained numerical,
+package and device checks, including the limits of sampled bit equality.
 
 ## WebGPU and WebAssembly
 
