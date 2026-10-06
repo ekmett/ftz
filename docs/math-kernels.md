@@ -1,4 +1,4 @@
-# Math kernels and platform work
+# Math functions and implementation
 
 FTZ owns the arithmetic graph and its boundary behavior. Native owns registers,
 masks, feature requirements and instruction wrappers. The graph may change when
@@ -15,9 +15,8 @@ registers, register arrays and HLSL values. Ordinary `exp(x)` calls select degre
 same nearest-even reduction and two-part ln(2) subtraction. The lower cutoff is
 `-87.33654022216796875f`; the last input before forced overflow is `88.72283172607421875f`.
 Larger inputs return positive infinity.
-This corrects the former early cutoff at `88.37625885009765625f`, which
-returned infinity for finite results. Degree six and seven retain finite results
-through the new endpoint; lower-degree approximation error can overflow earlier.
+Degrees six and seven retain finite results through that endpoint;
+lower-degree approximation error can overflow earlier.
 
 | Platform | Reconstruction |
 | --- | --- |

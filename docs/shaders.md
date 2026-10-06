@@ -1,8 +1,9 @@
 # HLSL and device policy
 
-I share arithmetic graphs between C++ and HLSL. CPU state does not establish
-what a shader device does, so I keep shader policy selection and admission
-separate from the host types.
+The HLSL 2021 headers provide FTZ arithmetic for shaders, with the same rounding
+and flushing rules as the C++ types. Compile with DXC to SPIR-V for Vulkan, or
+translate that SPIR-V to Metal with SPIRV-Cross. Check the compiled shader on
+the device before selecting hardware flushing; CPU settings do not configure it.
 
 `find_package(ftz CONFIG REQUIRED COMPONENTS hlsl)` supplies `ftz::hlsl`, its
 public shader include directories, and the `native::headers` dependency. Configure

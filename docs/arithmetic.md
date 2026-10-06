@@ -1,9 +1,9 @@
 # Arithmetic and thread controls
 
-I want an arithmetic policy to say what each operation means, including the
-awkward cases at zero and the normal/subnormal boundary. I keep that policy in
-the element type. I leave register width and instruction selection to
-[native](https://github.com/ekmett/native).
+`ftz::m32` and `ftz::h32` give the same reproducible arithmetic using different
+flushing strategies. Choose a type, establish its floating-point settings once
+per thread, and use it as a scalar or as the element of a `native::simd` vector.
+Changing the register width does not change the result contract.
 
 ## Policies and representation
 
@@ -72,9 +72,9 @@ reconstruction and the ordered plan for the remaining kernels.
 
 ## CPU environment and admission
 
-I establish the environment at a thread boundary and keep it out of element
-operations. A borrowed thread needs restoration; a thread owned by the numerical
-application can use the direct initializer.
+Set the floating-point environment when a numerical thread starts. Use a scope
+to restore the previous settings when borrowing a caller's thread; use the direct
+initializer for a thread the application owns. Neither belongs in an element loop.
 
 Both policies require round-to-nearest-even, genuine fused FMA, and ordinary
 operations compiled without reassociation or implicit contraction. `m32` supports

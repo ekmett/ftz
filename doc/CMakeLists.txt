@@ -79,7 +79,7 @@ set(DOXYGEN_WARN_IF_UNDOCUMENTED YES)
 set(DOXYGEN_WARN_IF_UNDOC_ENUM_VAL NO)
 set(DOXYGEN_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/docs")
 set(DOXYGEN_WARN_LOGFILE "${PROJECT_BINARY_DIR}/docs/warnings.log")
-set(DOXYGEN_PROJECT_BRIEF "Reproducible binary32 arithmetic for C++26 and HLSL")
+set(DOXYGEN_PROJECT_BRIEF "Fast, reproducible floating-point arithmetic")
 doxygen_add_docs(ftz_host_docs
   "${PROJECT_SOURCE_DIR}/src/cxx"
   "${PROJECT_SOURCE_DIR}/src/shared"

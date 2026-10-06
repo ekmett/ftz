@@ -1,9 +1,9 @@
 # Arithmetic and module boundaries
 
-I keep numerical policy in FTZ and register machinery in SIMD. Applications
-import `ftz` for the numerical types and math. The separate
-`ftz.controls` module supplies floating-point environment management without
-importing numerical types or vector operations.
+Import `ftz` for reproducible numerical types and math. The
+[native](https://github.com/ekmett/native) dependency supplies SIMD registers
+and masks. Import `ftz.controls` on its own to manage the floating-point
+environment without pulling in numerical types or vector operations.
 
 | Path | Responsibility |
 | --- | --- |

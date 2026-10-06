@@ -1,8 +1,8 @@
 # Building and consuming FTZ
 
-I build FTZ against an installed [native](https://github.com/ekmett/native) package.
-I keep the producer and every consuming library on one compiler/runtime
-configuration; incompatible BMIs are not an application boundary.
+Build FTZ against an installed [native](https://github.com/ekmett/native) package.
+Use the same compiler, standard library and exception settings throughout the
+application and its dependencies so their C++ modules remain compatible.
 
 ## Native packages
 
@@ -136,7 +136,7 @@ cache reuse or a speedup.
 
 ## API reference
 
-I generate the host and shader references from the public interfaces and use
+The host and shader references are generated from the public interfaces and use
 compiled consumers for the examples. Generating the documentation does not
 execute those consumers or qualify a numerical environment.
 
