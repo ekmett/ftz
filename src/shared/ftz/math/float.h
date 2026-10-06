@@ -4,6 +4,7 @@
 #ifdef __cplusplus
 #include <bit>
 #include <cmath>
+#include <native/detail/constexpr_float.h>
 #endif
 
 // Selected for an entire compiled helper graph, never per arithmetic operation.
@@ -18,14 +19,14 @@
 #endif
 
 namespace ftz { namespace detail { namespace math {
-  [[nodiscard]] native_inline native_const float fp32_decode(unsigned int bits) {
+  [[nodiscard]] native_constexpr native_inline native_const float fp32_decode(unsigned int bits) {
 #ifdef __cplusplus
     return std::bit_cast<float>(bits);
 #else
     return asfloat(bits);
 #endif
   }
-  [[nodiscard]] native_inline native_const unsigned int fp32_encode(float value) {
+  [[nodiscard]] native_constexpr native_inline native_const unsigned int fp32_encode(float value) {
 #ifdef __cplusplus
     return std::bit_cast<unsigned int>(value);
 #else
@@ -33,16 +34,26 @@ namespace ftz { namespace detail { namespace math {
 #endif
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  inline float fp32_ftz(float value) {
+  native_constexpr inline float fp32_ftz(float value) {
+#ifdef __cplusplus
+    if !consteval { if (Hardware) return value; }
+#else
     if (Hardware) return value;
+#endif
     unsigned int bits = fp32_encode(value);
     return fp32_decode((bits & 0x7f800000u) == 0u ? bits & 0x80000000u : bits);
   }
   // Flush=false is for graphs that already bound their intermediates, or
   // perform their own final repair. It must not add per-operation FTZ work.
   template <bool Flush = true, bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  [[nodiscard]] native_inline float fp32_add(float a, float b) {
+  [[nodiscard]] native_constexpr native_inline float fp32_add(float a, float b) {
 #ifdef __cplusplus
+    if consteval {
+      namespace fp = ::native::detail::constexpr_float;
+      auto const bits = fp::add_bits<fp::binary32>(fp32_encode(a), fp32_encode(b));
+      float result = fp32_decode(bits);
+      return Flush ? fp32_ftz<false>(result) : result;
+    }
     float result = a + b;
 #else
     precise float result = a + b;
@@ -50,8 +61,14 @@ namespace ftz { namespace detail { namespace math {
     return Flush ? fp32_ftz<Hardware>(result) : result;
   }
   template <bool Flush = true, bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  [[nodiscard]] native_inline float fp32_mul(float a, float b) {
+  [[nodiscard]] native_constexpr native_inline float fp32_mul(float a, float b) {
 #ifdef __cplusplus
+    if consteval {
+      namespace fp = ::native::detail::constexpr_float;
+      auto const bits = fp::mul_bits<fp::binary32>(fp32_encode(a), fp32_encode(b));
+      float result = fp32_decode(bits);
+      return Flush ? fp32_ftz<false>(result) : result;
+    }
     float result = a * b;
 #else
     precise float result = a * b;
@@ -59,8 +76,14 @@ namespace ftz { namespace detail { namespace math {
     return Flush ? fp32_ftz<Hardware>(result) : result;
   }
   template <bool Flush = true, bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  [[nodiscard]] native_inline float fp32_fma(float a, float b, float c) {
+  [[nodiscard]] native_constexpr native_inline float fp32_fma(float a, float b, float c) {
 #ifdef __cplusplus
+    if consteval {
+      namespace fp = ::native::detail::constexpr_float;
+      auto const bits = fp::fma_bits<fp::binary32>(fp32_encode(a), fp32_encode(b), fp32_encode(c));
+      float result = fp32_decode(bits);
+      return Flush ? fp32_ftz<false>(result) : result;
+    }
     float result = std::fma(a, b, c);
 #else
     precise float result = mad(a, b, c);
@@ -68,7 +91,7 @@ namespace ftz { namespace detail { namespace math {
     return Flush ? fp32_ftz<Hardware>(result) : result;
   }
 #ifndef __cplusplus
-  inline float2 fp32_ftz(float2 value) {
+  native_constexpr inline float2 fp32_ftz(float2 value) {
 #if FTZ_FP32_HARDWARE_FTZ
     return value;
 #else
@@ -77,7 +100,7 @@ namespace ftz { namespace detail { namespace math {
     return asfloat(bits & ((0u - nonzero) | 0x80000000u));
 #endif
   }
-  inline float3 fp32_ftz(float3 value) {
+  native_constexpr inline float3 fp32_ftz(float3 value) {
 #if FTZ_FP32_HARDWARE_FTZ
     return value;
 #else
@@ -86,7 +109,7 @@ namespace ftz { namespace detail { namespace math {
     return asfloat(bits & ((0u - nonzero) | 0x80000000u));
 #endif
   }
-  inline float4 fp32_ftz(float4 value) {
+  native_constexpr inline float4 fp32_ftz(float4 value) {
 #if FTZ_FP32_HARDWARE_FTZ
     return value;
 #else

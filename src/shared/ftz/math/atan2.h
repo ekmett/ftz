@@ -11,7 +11,7 @@ namespace ftz { namespace detail { namespace math {
   struct atan2_value { float radians; unsigned int valid; };
   // All finite inputs are accepted except (signed-FTZ(y), signed-FTZ(x))=(0,0).
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  inline atan2_result atan2_words(unsigned int y, unsigned int x) {
+  native_constexpr inline atan2_result atan2_words(unsigned int y, unsigned int x) {
     atan2_result result; result.bits=result.valid=0u;
     if (!approx_finite(y) || !approx_finite(x)) return result;
     y=approx_flush(y); x=approx_flush(x);
@@ -49,7 +49,7 @@ namespace ftz { namespace detail { namespace math {
     return result;
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  inline atan2_value atan2_checked(float y,float x) {
+  native_constexpr inline atan2_value atan2_checked(float y,float x) {
     atan2_result r=atan2_words<Hardware>(fp32_encode(y),fp32_encode(x));
     atan2_value result;result.radians=fp32_decode(r.bits);result.valid=r.valid;return result;
   }

@@ -21,21 +21,21 @@ namespace ftz::detail::native {
   namespace detail {
     template <class V> struct fp32_bit_bridge {
       using bits_type = typename V::bits_type;
-      static native_inline bits_type encode(V value) noexcept { return value.bits(); }
-      static native_inline V decode(bits_type value) noexcept { return V::from_bits(value); }
+      static constexpr native_inline bits_type encode(V value) noexcept { return value.bits(); }
+      static constexpr native_inline V decode(bits_type value) noexcept { return V::from_bits(value); }
     };
     template <class V> struct trig_conversion {
       using U = typename V::bits_type;
       using I = typename V::template rebind<std::int32_t>;
-      static native_inline U integer(V value) noexcept {
+      static constexpr native_inline U integer(V value) noexcept {
         return U::from_native(std::bit_cast<typename U::native_type>(convert<std::int32_t>(value).to_native()));
       }
-      static native_inline V floating(U value) noexcept {
+      static constexpr native_inline V floating(U value) noexcept {
         return convert<float>(I::from_native(std::bit_cast<typename I::native_type>(value.to_native())));
       }
     };
-    template <class V> native_inline V min(V a,V b) noexcept { return select(a<b,a,b); }
-    template <class V> native_inline V max(V a,V b) noexcept { return select(a>b,a,b); }
+    template <class V> constexpr native_inline V min(V a,V b) noexcept { return select(a<b,a,b); }
+    template <class V> constexpr native_inline V max(V a,V b) noexcept { return select(a>b,a,b); }
   }
 }
 
@@ -44,7 +44,17 @@ namespace ftz::detail::native {
 namespace ftz::detail::native {
   namespace detail {
     template <float_register V>
-    native_inline V exp_factor(V biased) noexcept {
+    constexpr native_inline V exp_factor(V biased) noexcept {
+      if consteval {
+        std::array<float, V::lanes> lanes{};
+        std::array<std::uint32_t, V::lanes> words{};
+        biased.store(lanes.data());
+        for (std::size_t i = 0; i < V::lanes; ++i) {
+          auto const bits = std::bit_cast<std::uint32_t>(lanes[i]);
+          if (bits <= 0x437e0000u) words[i] = std::uint32_t(lanes[i]) << 23;
+        }
+        return V::from_bits(V::bits_type::load(words.data()));
+      }
 #if defined(__aarch64__) || defined(_M_ARM64)
       // FCVTZU defines NaN and negative results as zero. No NaN admission mask
       // is needed: the polynomial's NaN survives the final multiplication.
@@ -72,7 +82,7 @@ namespace ftz::detail::native {
     }
   }
   template <unsigned int Degree = 6, float_register V, std::size_t N> requires (Degree >= 1 && Degree <= 7)
-  native_flatten native_inline std::array<V, N> exp_ftz(std::array<V, N> const & input) noexcept {
+  native_flatten constexpr native_inline std::array<V, N> exp_ftz(std::array<V, N> const & input) noexcept {
     if constexpr (N == 0) return {};
     else {
       auto const & [...x] = input;
@@ -112,7 +122,7 @@ namespace ftz::detail::native {
     }
   }
   template <unsigned int Degree = 6, float_register V> requires (Degree >= 1 && Degree <= 7)
-  native_inline V exp_ftz(V input) noexcept { return exp_ftz<Degree>(std::array{input})[0]; }
+  constexpr native_inline V exp_ftz(V input) noexcept { return exp_ftz<Degree>(std::array{input})[0]; }
 }
 
 // Altered source: paired polynomial and reducer with signed input FTZ,
@@ -122,7 +132,7 @@ namespace ftz::detail::native {
   enum class trig_output { sine, cosine, pair };
   namespace detail {
     template <trig_output Output, bool Hardware, bool Bounded, float_register V, std::size_t N>
-    native_flatten native_inline auto sincos_ftz_kernel(std::array<V, N> const & input) noexcept {
+    native_flatten constexpr native_inline auto sincos_ftz_kernel(std::array<V, N> const & input) noexcept {
       using B = fp32_bit_bridge<V>;
       using I = typename B::bits_type;
       using C = trig_conversion<V>;
@@ -205,54 +215,54 @@ namespace ftz::detail::native {
   // Reduced entry: finite |x| <= 1. Input subnormals become signed zero.
   // No range reduction. This is a reproducible approximation, not CR sin/cos.
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V, std::size_t N>
-  native_inline std::pair<std::array<V, N>, std::array<V, N>> sincos_reduced_ftz(std::array<V, N> const & x) noexcept {
+  constexpr native_inline std::pair<std::array<V, N>, std::array<V, N>> sincos_reduced_ftz(std::array<V, N> const & x) noexcept {
     return detail::sincos_ftz_kernel<trig_output::pair,Hardware,false>(x);
   }
   // Bounded entry: finite |x| < 8192. Shared three-FMA reduction.
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V, std::size_t N>
-  native_inline std::pair<std::array<V, N>, std::array<V, N>> sincos_ftz(std::array<V, N> const & x) noexcept {
+  constexpr native_inline std::pair<std::array<V, N>, std::array<V, N>> sincos_ftz(std::array<V, N> const & x) noexcept {
     return detail::sincos_ftz_kernel<trig_output::pair,Hardware,true>(x);
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V, std::size_t N>
-  native_inline std::array<V, N> sin_reduced_ftz(std::array<V, N> const & x) noexcept {
+  constexpr native_inline std::array<V, N> sin_reduced_ftz(std::array<V, N> const & x) noexcept {
     return detail::sincos_ftz_kernel<trig_output::sine,Hardware,false>(x);
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V, std::size_t N>
-  native_inline std::array<V, N> cos_reduced_ftz(std::array<V, N> const & x) noexcept {
+  constexpr native_inline std::array<V, N> cos_reduced_ftz(std::array<V, N> const & x) noexcept {
     return detail::sincos_ftz_kernel<trig_output::cosine,Hardware,false>(x);
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V, std::size_t N>
-  native_inline std::array<V, N> sin_ftz(std::array<V, N> const & x) noexcept { return detail::sincos_ftz_kernel<trig_output::sine,Hardware,true>(x); }
+  constexpr native_inline std::array<V, N> sin_ftz(std::array<V, N> const & x) noexcept { return detail::sincos_ftz_kernel<trig_output::sine,Hardware,true>(x); }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V, std::size_t N>
-  native_inline std::array<V, N> cos_ftz(std::array<V, N> const & x) noexcept { return detail::sincos_ftz_kernel<trig_output::cosine,Hardware,true>(x); }
-  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> native_inline std::pair<V, V> sincos_reduced_ftz(V x) noexcept {
+  constexpr native_inline std::array<V, N> cos_ftz(std::array<V, N> const & x) noexcept { return detail::sincos_ftz_kernel<trig_output::cosine,Hardware,true>(x); }
+  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> constexpr native_inline std::pair<V, V> sincos_reduced_ftz(V x) noexcept {
     auto [sine, cosine] = sincos_reduced_ftz<Hardware>(std::array{x});
     return {sine[0], cosine[0]};
   }
-  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> native_inline std::pair<V, V> sincos_ftz(V x) noexcept {
+  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> constexpr native_inline std::pair<V, V> sincos_ftz(V x) noexcept {
     auto [sine, cosine] = sincos_ftz<Hardware>(std::array{x});
     return {sine[0], cosine[0]};
   }
-  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> native_inline V sin_reduced_ftz(V x) noexcept { return sin_reduced_ftz<Hardware>(std::array{x})[0]; }
-  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> native_inline V cos_reduced_ftz(V x) noexcept { return cos_reduced_ftz<Hardware>(std::array{x})[0]; }
-  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> native_inline V sin_ftz(V x) noexcept { return sin_ftz<Hardware>(std::array{x})[0]; }
-  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> native_inline V cos_ftz(V x) noexcept { return cos_ftz<Hardware>(std::array{x})[0]; }
+  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> constexpr native_inline V sin_reduced_ftz(V x) noexcept { return sin_reduced_ftz<Hardware>(std::array{x})[0]; }
+  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> constexpr native_inline V cos_reduced_ftz(V x) noexcept { return cos_reduced_ftz<Hardware>(std::array{x})[0]; }
+  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> constexpr native_inline V sin_ftz(V x) noexcept { return sin_ftz<Hardware>(std::array{x})[0]; }
+  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> constexpr native_inline V cos_ftz(V x) noexcept { return cos_ftz<Hardware>(std::array{x})[0]; }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  native_inline std::pair<float, float> sincos_reduced_ftz(float x) noexcept {
+  constexpr native_inline std::pair<float, float> sincos_reduced_ftz(float x) noexcept {
     auto [sine, cosine] = sincos_reduced_ftz<Hardware>(fp32x1(x)); return {sine.value, cosine.value};
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  native_inline std::pair<float, float> sincos_ftz(float x) noexcept {
+  constexpr native_inline std::pair<float, float> sincos_ftz(float x) noexcept {
     auto [sine, cosine] = sincos_ftz<Hardware>(fp32x1(x)); return {sine.value, cosine.value};
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  native_inline float sin_reduced_ftz(float x) noexcept { return sin_reduced_ftz<Hardware>(fp32x1(x)).value; }
+  constexpr native_inline float sin_reduced_ftz(float x) noexcept { return sin_reduced_ftz<Hardware>(fp32x1(x)).value; }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  native_inline float cos_reduced_ftz(float x) noexcept { return cos_reduced_ftz<Hardware>(fp32x1(x)).value; }
+  constexpr native_inline float cos_reduced_ftz(float x) noexcept { return cos_reduced_ftz<Hardware>(fp32x1(x)).value; }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  native_inline float sin_ftz(float x) noexcept { return sin_ftz<Hardware>(fp32x1(x)).value; }
+  constexpr native_inline float sin_ftz(float x) noexcept { return sin_ftz<Hardware>(fp32x1(x)).value; }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  native_inline float cos_ftz(float x) noexcept { return cos_ftz<Hardware>(fp32x1(x)).value; }
+  constexpr native_inline float cos_ftz(float x) noexcept { return cos_ftz<Hardware>(fp32x1(x)).value; }
 } // namespace ftz::detail::native
 
 /*
@@ -332,7 +342,7 @@ namespace ftz::detail::native {
   };
   namespace detail {
     template <bool Hardware, bool Gain, float_register V, std::size_t N>
-    native_flatten native_inline auto expm1_graph(std::array<V, N> const & input) noexcept {
+    native_flatten constexpr native_inline auto expm1_graph(std::array<V, N> const & input) noexcept {
       using B = fp32_bit_bridge<V>;
       using U = typename B::bits_type;
       using result_type = expm1_result<std::array<V, N>, std::array<U, N>>;
@@ -405,31 +415,31 @@ namespace ftz::detail::native {
   // Conditional reproducible graph: actual RNE fused FMA, separate RNE multiply.
   // Signed FTZ at entry/exit; no ambient FP-mode changes. Finite x <= 1 only.
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V, std::size_t N>
-  native_inline auto expm1_checked(std::array<V, N> const & input) noexcept {
+  constexpr native_inline auto expm1_checked(std::array<V, N> const & input) noexcept {
     return detail::expm1_graph<Hardware,false>(input);
   }
   // Damping gain -expm1(-a), finite a >= 0 (either signed zero accepted).
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V, std::size_t N>
-  native_inline auto damping_gain_checked(std::array<V, N> const & input) noexcept {
+  constexpr native_inline auto damping_gain_checked(std::array<V, N> const & input) noexcept {
     return detail::expm1_graph<Hardware,true>(input);
   }
-  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> native_inline auto expm1_checked(V input) noexcept {
+  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> constexpr native_inline auto expm1_checked(V input) noexcept {
     auto r = expm1_checked<Hardware>(std::array{input});
     return expm1_result<V, typename detail::fp32_bit_bridge<V>::bits_type>{
       r.value[0], r.valid[0]};
   }
-  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> native_inline auto damping_gain_checked(V input) noexcept {
+  template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0, float_register V> constexpr native_inline auto damping_gain_checked(V input) noexcept {
     auto r = damping_gain_checked<Hardware>(std::array{input});
     return expm1_result<V, typename detail::fp32_bit_bridge<V>::bits_type>{
       r.value[0], r.valid[0]};
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  native_inline expm1_result<float, std::uint32_t> expm1_checked(float input) noexcept {
+  constexpr native_inline expm1_result<float, std::uint32_t> expm1_checked(float input) noexcept {
     auto r = expm1_checked<Hardware>(fp32x1(input));
     return {r.value.value, r.valid.value};
   }
   template <bool Hardware = FTZ_FP32_HARDWARE_FTZ != 0>
-  native_inline expm1_result<float, std::uint32_t> damping_gain_checked(float input) noexcept {
+  constexpr native_inline expm1_result<float, std::uint32_t> damping_gain_checked(float input) noexcept {
     auto r = damping_gain_checked<Hardware>(fp32x1(input));
     return {r.value.value, r.valid.value};
   }
@@ -461,7 +471,7 @@ namespace ftz::detail::native {
   // output is the original word. Leading zero coefficients
   // add only exact 0*t+0 / 0*t+c steps before each original live chain.
   template <bool Hardware, float_register V, std::size_t N>
-  native_flatten native_inline std::array<V,N> tanh_ftz(std::array<V,N> const & input) noexcept {
+  native_flatten constexpr native_inline std::array<V,N> tanh_ftz(std::array<V,N> const & input) noexcept {
     using B=detail::fp32_bit_bridge<V>;
     using U=typename B::bits_type;
     if constexpr (N==0) return {};
@@ -555,7 +565,7 @@ namespace ftz::detail::native {
   // hardware tiny lanes may underflow, but return their original words. All
   // observed intermediates are bounded by tests/log/verify_bounds.py.
   template <bool OnePlus, bool Hardware, float_register V, std::size_t N>
-  native_flatten native_inline std::array<V,N> log_ftz(std::array<V,N> const & input) noexcept {
+  native_flatten constexpr native_inline std::array<V,N> log_ftz(std::array<V,N> const & input) noexcept {
     using B=detail::fp32_bit_bridge<V>;
     using U=typename B::bits_type;
     using I=typename V::template rebind<std::int32_t>;
@@ -643,7 +653,7 @@ namespace ftz::detail::native {
   // for axis/nonfinite lanes, whose outputs are reconstructed at the end.
   // Altered coefficient use from SLEEF 3.9.0 atan2kf, under Boost 1.0 below.
   template<bool Hardware,float_register V,std::size_t N>
-  native_flatten native_inline std::array<V,N> atan2_ftz(
+  native_flatten constexpr native_inline std::array<V,N> atan2_ftz(
       std::array<V,N> const & y_input,std::array<V,N> const & x_input) noexcept {
     using B=detail::fp32_bit_bridge<V>;
     using U=typename B::bits_type;

@@ -70,6 +70,23 @@ branches of a numerical conditional in the same type.
 See [math functions and implementation](math-kernels.md) for the available
 operations, their algorithms and range behavior.
 
+## Constant evaluation
+
+Arithmetic, comparisons, classification and math work in constant expressions
+for both policies, including SIMD, array and `wide` forms. They use the same
+operation graphs and flushing rules as runtime evaluation; division and square
+root retain their defined approximations. NaN sign and payload remain unspecified.
+
+```cpp
+constexpr auto x = ftz::h32(2.f) * ftz::h32(3.f);
+static_assert(x.to_bits() == 0x40c00000u); // 6.f
+```
+
+Constant evaluation needs no floating-point scope or hardware admission. The
+compiler computes the result with software arithmetic. Runtime calls retain
+their native implementations and still require the environment described below.
+Thread controls and hardware probes are runtime operations.
+
 ## CPU environment and admission
 
 Set the floating-point environment when a numerical thread starts. Use a scope

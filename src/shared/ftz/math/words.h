@@ -1,5 +1,6 @@
 #pragma once
 #include "ftz/config.h"
+#include "native/attributes.h"
 
 // HLSL consumers must enable and admit shaderInt64 explicitly. The WebGPU
 // compatible path remains 32-bit; native C++ uses uint64_t unconditionally.
@@ -23,29 +24,29 @@ namespace ftz { namespace detail { namespace math {
 #endif
   // The large-angle reducer consumes 32-bit limbs at this boundary.
   struct unsigned_word_product { unsigned int low, high; };
-  inline unsigned_word_product word_pair(unsigned int low, unsigned int high) {
+  native_constexpr inline unsigned_word_product word_pair(unsigned int low, unsigned int high) {
     unsigned_word_product r; r.low = low; r.high = high; return r;
   }
-  inline unsigned_word_product word_pair(uint64_t value) {
+  native_constexpr inline unsigned_word_product word_pair(uint64_t value) {
     return word_pair((unsigned int)value, (unsigned int)(value >> 32));
   }
-  inline uint64_t word_value(unsigned_word_product value) {
+  native_constexpr inline uint64_t word_value(unsigned_word_product value) {
     return (uint64_t(value.high) << 32) | uint64_t(value.low);
   }
-  inline unsigned_word_product unsigned_multiply_words(unsigned int a, unsigned int b) {
+  native_constexpr inline unsigned_word_product unsigned_multiply_words(unsigned int a, unsigned int b) {
     return word_pair(uint64_t(a) * uint64_t(b));
   }
-  inline unsigned_word_product word_pair_left(unsigned_word_product value, unsigned int shift) {
+  native_constexpr inline unsigned_word_product word_pair_left(unsigned_word_product value, unsigned int shift) {
     return word_pair(shift < 64u ? word_value(value) << shift : uint64_t(0));
   }
-  inline unsigned int word_leading_zeros(unsigned int value) {
+  native_constexpr inline unsigned int word_leading_zeros(unsigned int value) {
 #ifdef __cplusplus
     return (unsigned int)std::countl_zero(value);
 #else
     return value == 0u ? 32u : 31u - (unsigned int)firstbithigh(value);
 #endif
   }
-  inline unsigned int word_top(uint64_t value) {
+  native_constexpr inline unsigned int word_top(uint64_t value) {
 #ifdef __cplusplus
     return 63u - (unsigned int)std::countl_zero(value);
 #else
@@ -56,25 +57,25 @@ namespace ftz { namespace detail { namespace math {
 #endif
   }
   // Discarded bits contribute one sticky bit. No shift reaches 64.
-  inline uint64_t word_right_jam(uint64_t value, unsigned int shift) {
+  native_constexpr inline uint64_t word_right_jam(uint64_t value, unsigned int shift) {
     if (shift == 0u) return value;
     if (shift >= 64u) return uint64_t(value != 0);
     return (value >> shift) | uint64_t((value << (64u - shift)) != 0);
   }
   struct fp32_result { unsigned int bits, valid; };
-  inline fp32_result fp32_result_of(unsigned int bits, unsigned int valid) {
+  native_constexpr inline fp32_result fp32_result_of(unsigned int bits, unsigned int valid) {
     fp32_result r; r.bits = bits; r.valid = valid; return r;
   }
-  inline unsigned int fp32_flush_word(unsigned int bits) {
+  native_constexpr inline unsigned int fp32_flush_word(unsigned int bits) {
     return (bits & 0x7fffffffu) < 0x00800000u ? bits & 0x80000000u : bits;
   }
-  inline bool fp32_finite(unsigned int bits) {
+  native_constexpr inline bool fp32_finite(unsigned int bits) {
     return (bits & 0x7f800000u) != 0x7f800000u;
   }
   // magnitude * 2^(exponent-61), rounded to nearest-even then signed FTZ.
   // Alignment jams only when exponent differences exclude deep cancellation.
   // The final rounding shift discards the jam bit but preserves its meaning.
-  inline fp32_result fp32_pack(uint64_t magnitude, int exponent, unsigned int sign) {
+  native_constexpr inline fp32_result fp32_pack(uint64_t magnitude, int exponent, unsigned int sign) {
     if (magnitude == 0) return fp32_result_of(sign, 1u);
     int top = (int)word_top(magnitude);
     int biased = exponent - 61 + top + 127;
@@ -99,10 +100,10 @@ namespace ftz { namespace detail { namespace math {
     if (biased >= 255) return fp32_result_of(0u, 0u);
     return fp32_result_of(sign | ((unsigned int)biased << 23) | (quotient & 0x007fffffu), 1u);
   }
-  inline fp32_result fp32_pack(unsigned_word_product magnitude, int exponent, unsigned int sign) {
+  native_constexpr inline fp32_result fp32_pack(unsigned_word_product magnitude, int exponent, unsigned int sign) {
     return fp32_pack(word_value(magnitude), exponent, sign);
   }
-  inline fp32_result fp32_fma_words(unsigned int a, unsigned int b, unsigned int c) {
+  native_constexpr inline fp32_result fp32_fma_words(unsigned int a, unsigned int b, unsigned int c) {
     if (!fp32_finite(a) || !fp32_finite(b) || !fp32_finite(c))
       return fp32_result_of(0u, 0u);
     a = fp32_flush_word(a); b = fp32_flush_word(b); c = fp32_flush_word(c);

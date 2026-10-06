@@ -3,13 +3,13 @@
 #include "ftz/math/float.h"
 namespace ftz { namespace detail { namespace math {
   struct approx_result { unsigned int bits, valid; };
-  inline unsigned int approx_flush(unsigned int x) {
+  native_constexpr inline unsigned int approx_flush(unsigned int x) {
     return (x & 0x7f800000u) == 0u ? x & 0x80000000u : x;
   }
-  inline bool approx_finite(unsigned int x) { return (x & 0x7fffffffu) < 0x7f800000u; }
+  native_constexpr inline bool approx_finite(unsigned int x) { return (x & 0x7fffffffu) < 0x7f800000u; }
   // Scale a positive normal intermediate by a power of two without floating
   // underflow. RNE at the minnormal boundary precedes signed output FTZ.
-  inline approx_result approx_scale(unsigned int word, int shift, unsigned int sign) {
+  native_constexpr inline approx_result approx_scale(unsigned int word, int shift, unsigned int sign) {
     approx_result r; r.bits=0u; r.valid=1u;
     int exponent=(int)(word>>23)+shift;
     if (exponent>=255) { r.valid=0u; return r; }
@@ -23,7 +23,7 @@ namespace ftz { namespace detail { namespace math {
   // The graph's normalized operands stay normal under every supported FTZ mode.
   // It intentionally approximates the mathematical operation; version 1 is not
   // an exact-RNE division/square-root contract or a hardware-estimate wrapper.
-  inline approx_result approx_apply(unsigned int operation, unsigned int a, unsigned int b) {
+  native_constexpr inline approx_result approx_apply(unsigned int operation, unsigned int a, unsigned int b) {
     approx_result invalid; invalid.bits=invalid.valid=0u;
     if (operation>3u || !approx_finite(a) ||
         (operation==3u ? !approx_finite(b) : b!=0u)) return invalid;
@@ -69,12 +69,12 @@ namespace ftz { namespace detail { namespace math {
     }
     return approx_scale(fp32_encode(r),shift,sign);
   }
-  inline approx_result approx_reciprocal(unsigned int a) { return approx_apply(0u,a,0u); }
-  inline approx_result approx_sqrt(unsigned int a) { return approx_apply(1u,a,0u); }
-  inline approx_result approx_rsqrt(unsigned int a) { return approx_apply(2u,a,0u); }
-  inline approx_result approx_divide(unsigned int a,unsigned int b) { return approx_apply(3u,a,b); }
+  native_constexpr inline approx_result approx_reciprocal(unsigned int a) { return approx_apply(0u,a,0u); }
+  native_constexpr inline approx_result approx_sqrt(unsigned int a) { return approx_apply(1u,a,0u); }
+  native_constexpr inline approx_result approx_rsqrt(unsigned int a) { return approx_apply(2u,a,0u); }
+  native_constexpr inline approx_result approx_divide(unsigned int a,unsigned int b) { return approx_apply(3u,a,b); }
   // Internal precondition: finite normal or signed-zero operands.
-  inline approx_result approx_div_prechecked_words(unsigned int a, unsigned int b) {
+  native_constexpr inline approx_result approx_div_prechecked_words(unsigned int a, unsigned int b) {
     unsigned int aa=a&0x7fffffffu, bb=b&0x7fffffffu;
     approx_result result; result.bits=result.valid=0u;
     if (bb==0u) return result;
@@ -91,7 +91,7 @@ namespace ftz { namespace detail { namespace math {
     int shift=((int)(aa>>23)-127)-((int)(bb>>23)-127);
     return approx_scale(fp32_encode(r),shift,sign);
   }
-  inline approx_result approx_sqrt_prechecked_words(unsigned int a) {
+  native_constexpr inline approx_result approx_sqrt_prechecked_words(unsigned int a) {
     unsigned int aa=a&0x7fffffffu;
     approx_result result; result.bits=result.valid=0u;
     if (aa==0u) { result.bits=a; result.valid=1u; return result; }
