@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
+// SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
 module;
 #include <native/attributes.h>
 #include <ftz/config.h>
@@ -635,17 +637,6 @@ export namespace ftz {
 
 }
 
-/**
- * \file
- * \license
- * SPDX-FileType: SOURCE
- * SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
- * SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
- * \endlicense
- * \author Edward Kmett <ekmett@gmail.com>
- * \brief Scalar float wrapper with signed FTZ, deterministic arithmetic, and math overloads.
- */
-
 #include "ftz/simd.h"
 
 namespace ftz::detail {
@@ -709,15 +700,3 @@ export namespace ftz {
     return ::ftz::detail::ftz32_cpu_probe(detail::ftz32_cpu_evaluate<T::hardware>, T::hardware);
   }
 }
-
-/**
- * \file
- * \license
- * SPDX-FileType: SOURCE
- * SPDX-FileCopyrightText: 2026 Edward Kmett <ekmett@gmail.com>
- * SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
- * \endlicense
- * \author Edward Kmett <ekmett@gmail.com>
- * \brief Startup checks for rounding, fused arithmetic, signed FTZ, and boundary repair.
- */
-
