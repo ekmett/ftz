@@ -3,7 +3,7 @@
   description = "FTZ reproducible floating-point arithmetic";
 
   inputs = {
-    native.url = "tarball+https://codeload.github.com/ekmett/native/tar.gz/cbf60ea5fe45db71254c598b23ff52574792776c";
+    native.url = "git+https://github.com/ekmett/native?ref=main&shallow=1";
     nixpkgs.follows = "native/nixpkgs";
   };
 

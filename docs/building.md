@@ -6,24 +6,24 @@ application and its dependencies so their C++ modules remain compatible.
 
 ## Docker and Nix
 
-`ghcr.io/ekmett/ftz:llvm23` adds FTZ to the
+`ghcr.io/ekmett/ftz:latest` adds FTZ to the
 [Native development image](https://github.com/ekmett/native/pkgs/container/native).
 It includes Clang 23, CMake/Ninja, Native and Hint, with FTZ installed under
 `/opt/ftz`. `CMAKE_PREFIX_PATH` includes both libraries. The image runs on
 Linux x86-64 and uses the default explicit-flushing, exception-disabled build.
 
 ```sh
-docker run --rm -v "$PWD:/workspace" ghcr.io/ekmett/ftz:llvm23 \
+docker run --rm -v "$PWD:/workspace" ghcr.io/ekmett/ftz:latest \
   bash -c 'cmake -S . -B build/docker -G Ninja -DCMAKE_BUILD_TYPE=Release &&
            cmake --build build/docker --parallel &&
            ctest --test-dir build/docker --output-on-failure'
 ```
 
-Use `FROM ghcr.io/ekmett/ftz:llvm23` in a downstream Dockerfile. This repository's
-Dockerfile pins its Native base by digest; `--build-arg NATIVE_IMAGE=...` selects
-another qualified image. The Docker workflow checks the installed scalar,
+Use `FROM ghcr.io/ekmett/ftz:latest` in a downstream Dockerfile. This repository's
+Dockerfile follows `ghcr.io/ekmett/native:latest`; CI pulls the current base on
+every build. `--build-arg NATIVE_IMAGE=...` overrides it for local diagnosis. The Docker workflow checks the installed scalar,
 environment, SIMD and native-type interfaces before publishing `latest`,
-`llvm23` and `sha-<full commit>` tags. Pin the published digest for repeatable CI.
+`llvm23` and `sha-<full commit>` tags. In-house downstream builds follow `latest`.
 
 On NixOS, or Linux with Nix's `nix-command` and `flakes` features enabled:
 
@@ -34,8 +34,10 @@ nix develop
 ```
 
 The flake supplies `packages.<system>.ftz` and a matching development shell for
-`x86_64-linux` and `aarch64-linux`. It consumes Native's locked package and follows
-its nixpkgs input, so both libraries use the same compiler and dependencies.
+`x86_64-linux` and `aarch64-linux`. It follows Native's `main` branch and its nixpkgs input, so both libraries use
+the same compiler and dependencies. CI refreshes Native and Hint before building;
+the committed lockfile remains a snapshot for local builds. Run
+`nix flake update native native/hint` to refresh those inputs locally.
 `nix build` runs the installed API checks and leaves the package at `result`.
 Inside `nix develop`, Native is available to CMake; use a separate `build/nix`
 directory. Downstream projects link `ftz::ftz` after
@@ -165,7 +167,7 @@ and [shader headers](shaders.md) for a language-free package.
 
 The [Documentation workflow](https://github.com/ekmett/ftz/blob/main/.github/workflows/docs.yml) builds both references
 on pull requests and publishes them to [GitHub Pages](https://ekmett.github.io/ftz/)
-after a push to main. It pins Doxygen and the native dependency, treats documentation
+after a push to main. It pins Doxygen, follows Native main, treats documentation
 warnings as errors, and checks generated links before uploading the site.
 Generated HTML stays in the build and deployment artifacts, outside the source tree.
 
@@ -192,8 +194,7 @@ to a path containing spaces before consumer builds. A passing hosted run qualifi
 that runner and revision, not every CPU sharing its architecture. AVX-512 and GPU execution are outside this workflow.
 
 Windows uses native, checksum-pinned LLVM 23.1.1, CMake 4.4.3 and Ninja 1.13.2
-with the matching Visual Studio SDK environment. The workflow pins the native
-dependency revision.
+with the matching Visual Studio SDK environment. The workflow builds against Native main and records the resolved revision.
 
 Intel macOS, AVX-512 and GPU execution are not in this hosted matrix.
 

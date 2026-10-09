@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
-ARG NATIVE_IMAGE=ghcr.io/ekmett/native:llvm23@sha256:f8ea44eb935113fc5d2c408e1ab94d1514ec3aeaa3a6e4fabacaaa35e2e50c8f
+ARG NATIVE_IMAGE=ghcr.io/ekmett/native:latest
 FROM ${NATIVE_IMAGE} AS build
 WORKDIR /src/ftz
 COPY . .
