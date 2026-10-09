@@ -140,15 +140,3 @@ cover the separate C++ and HLSL references.
 
 FTZ is dual-licensed under BSD-2-Clause and Apache-2.0. See
 [LICENSE.md](LICENSE.md) and individual source notices for retained upstream terms.
-
-Runtime coverage is available with `-DFTZ_ENABLE_COVERAGE=ON` in a Clang test
-build, with matching `llvm-cov`, `llvm-profdata`, and `grcov` on the path.
-Run the tests normally, then build the `ftz_coverage` target. It writes LCOV
-and HTML under `coverage/report/` without rerunning the tests. These reports
-measure executed C++ code; compile-time proofs and shader execution are not
-counted as runtime coverage.
-
-The coverage workflow reports each Linux, macOS and Windows CPU target on every
-commit to `main`. Codecov receives the LCOV report and CTest's JUnit results using
-GitHub OIDC. The retained artifact includes the detected CPU features and a
-browsable report. Ordinary builds remain uninstrumented.
