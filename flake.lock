@@ -24,10 +24,10 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1791540707,
-        "narHash": "sha256-drEhw8o/Ex3U0FAX0717X2zRHDVzF30Vlj4sOFfg41Y=",
+        "lastModified": 1791541118,
+        "narHash": "sha256-k2dQpUelxbbpHL6Po9s6ZH0dYH4u7W1VL3pG+SMADXQ=",
         "ref": "main",
-        "rev": "e7944f38f9e132fa89b36ab84372dde2538abefd",
+        "rev": "9541bb6d65bbb091870eacc5e88bf52a73a8e813",
         "shallow": true,
         "type": "git",
         "url": "https://github.com/ekmett/native"

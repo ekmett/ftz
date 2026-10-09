@@ -10,7 +10,8 @@ application and its dependencies so their C++ modules remain compatible.
 [Native development image](https://github.com/ekmett/native/pkgs/container/native).
 It includes Clang 23, CMake/Ninja, Native and Hint, with FTZ installed under
 `/opt/ftz`. `CMAKE_PREFIX_PATH` includes both libraries. The image runs on
-Linux x86-64 and uses the default explicit-flushing, exception-disabled build.
+Linux x86-64, uses explicit flushing, and enables C++ exceptions to match its
+Native base and downstream consumers.
 
 ```sh
 docker run --rm -v "$PWD:/workspace" ghcr.io/ekmett/ftz:latest \
@@ -66,9 +67,9 @@ Use `clang-cl` on Windows. Tests default to AVX2 on x86 and NEON on ARM64.
 On a host admitted for AVX-512, set `-DFTZ_TEST_PROFILES="AVX2;AVX512"`
 to exercise both native widths; the test executables assume their selected ISA
 is available. Merely compiling an ISA provider does not establish that.
-Exceptions default to disabled. An exception-enabled
-consumer uses packages built with both `NATIVE_ENABLE_EXCEPTIONS=ON` and
-`FTZ_ENABLE_EXCEPTIONS=ON`.
+Exceptions default to enabled in both packages. For an exception-free build,
+set both `NATIVE_ENABLE_EXCEPTIONS=OFF` and `FTZ_ENABLE_EXCEPTIONS=OFF`;
+producer and consumer settings must agree.
 
 ```cmake
 find_package(ftz CONFIG REQUIRED COMPONENTS ftz)

@@ -6,7 +6,7 @@ WORKDIR /src/ftz
 COPY . .
 RUN cmake -S . -B /tmp/ftz-build -G Ninja \
       -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/ftz \
-      -DFTZ_BUILD_TESTS=OFF \
+      -DFTZ_BUILD_TESTS=OFF -DFTZ_ENABLE_EXCEPTIONS=ON \
  && cmake --build /tmp/ftz-build --parallel \
  && cmake --install /tmp/ftz-build
 
