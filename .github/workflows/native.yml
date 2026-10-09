@@ -232,6 +232,11 @@ jobs:
           ctest --test-dir build/ftz --no-tests=error --output-on-failure \
             --output-junit "$GITHUB_WORKSPACE/build/logs/ftz-tests.xml" \
             2>&1 | tee build/logs/ftz-test.log
+      # Reporting may regenerate CMake; finish before moving its dependencies.
+      - name: Generate coverage report
+        id: coverage
+        if: ${{ !cancelled() && inputs.coverage && hashFiles('build/ftz/coverage/raw/*.profraw') != '' }}
+        run: cmake --build build/ftz --target ftz_coverage
       - name: Relocate both installed packages
         run: |
           cmake --install build/ftz --prefix "$GITHUB_WORKSPACE/build/install/ftz" \
@@ -277,10 +282,6 @@ jobs:
           flags: ${{ runner.os }}_${{ runner.arch }},${{ inputs.coverage && 'instrumented' || 'regular' }}
           name: ${{ matrix.runner }}-${{ inputs.coverage && 'coverage' || 'build' }}
           fail_ci_if_error: true
-      - name: Generate coverage report
-        id: coverage
-        if: ${{ !cancelled() && inputs.coverage && hashFiles('build/ftz/coverage/raw/*.profraw') != '' }}
-        run: cmake --build build/ftz --target ftz_coverage
       - name: Retain coverage report
         if: ${{ !cancelled() && steps.coverage.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
