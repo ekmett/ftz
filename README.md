@@ -1,11 +1,11 @@
 # ftz
 
 <!-- badges:start -->
-[![coverage](https://img.shields.io/github/actions/workflow/status/ekmett/ftz/coverage.yml?branch=main&label=coverage&logo=githubactions&logoColor=white)](https://github.com/ekmett/ftz/actions/workflows/coverage.yml)
 [![build](https://img.shields.io/github/actions/workflow/status/ekmett/ftz/native.yml?branch=main&style=flat&label=build&logo=githubactions&logoColor=white)](https://github.com/ekmett/ftz/actions/workflows/native.yml?query=branch%3Amain)
-[![Docker build](https://img.shields.io/github/actions/workflow/status/ekmett/ftz/docker.yml?branch=main&style=flat&label=docker+build&logo=docker&logoColor=white)](https://github.com/ekmett/ftz/actions/workflows/docker.yml?query=branch%3Amain)
-[![Nix build](https://img.shields.io/github/actions/workflow/status/ekmett/ftz/nix.yml?branch=main&style=flat&label=nix+build&logo=nixos&logoColor=white)](https://github.com/ekmett/ftz/actions/workflows/nix.yml?query=branch%3Amain)
-[![docs build](https://img.shields.io/github/actions/workflow/status/ekmett/ftz/docs.yml?branch=main&style=flat&label=docs+build&logo=githubactions&logoColor=white)](https://github.com/ekmett/ftz/actions/workflows/docs.yml?query=branch%3Amain)
+[![docs](https://img.shields.io/github/actions/workflow/status/ekmett/ftz/docs.yml?branch=main&style=flat&label=docs&logo=githubactions&logoColor=white)](https://github.com/ekmett/ftz/actions/workflows/docs.yml?query=branch%3Amain)
+[![coverage](https://img.shields.io/github/actions/workflow/status/ekmett/ftz/coverage.yml?branch=main&style=flat&label=coverage&logo=githubactions&logoColor=white)](https://github.com/ekmett/ftz/actions/workflows/coverage.yml?query=branch%3Amain)
+[![docker](https://img.shields.io/github/actions/workflow/status/ekmett/ftz/docker.yml?branch=main&style=flat&label=docker&logo=githubactions&logoColor=white)](https://github.com/ekmett/ftz/actions/workflows/docker.yml?query=branch%3Amain)
+[![nix](https://img.shields.io/github/actions/workflow/status/ekmett/ftz/nix.yml?branch=main&style=flat&label=nix&logo=githubactions&logoColor=white)](https://github.com/ekmett/ftz/actions/workflows/nix.yml?query=branch%3Amain)
 [![issues](https://img.shields.io/github/issues/ekmett/ftz?style=flat&label=issues&color=007ec6&logo=github&logoColor=white)](https://github.com/ekmett/ftz/issues)
 [![commits](https://img.shields.io/github/commit-activity/w/ekmett/ftz?style=flat&label=commits&color=007ec6&logo=github&logoColor=white)](https://github.com/ekmett/ftz/activity)
 
@@ -21,7 +21,7 @@
 [![license: BSD-2-Clause OR Apache-2.0](assets/badges/license.svg)](LICENSE.md)
 [![Contributor Covenant: 2.0](https://img.shields.io/static/v1?label=Contributor+Covenant&message=2.0&color=007ec6&style=flat&logo=contributorcovenant&logoColor=white)](CODE_OF_CONDUCT.md)
 
-[![docs: read](https://img.shields.io/static/v1?label=docs&message=read&color=007ec6&style=flat)](https://ekmett.github.io/ftz/)
+[![docs: read](https://img.shields.io/static/v1?label=docs&message=read&color=007ec6&style=flat&logo=pandoc&logoColor=white)](https://ekmett.github.io/ftz/)
 [![coverage report](https://img.shields.io/badge/coverage-report-F01F7A?logo=codecov&logoColor=white)](https://app.codecov.io/github/ekmett/ftz)
 [![Docker: ghcr.io](https://img.shields.io/static/v1?label=Docker&message=ghcr.io&color=2496ED&style=flat&logo=docker&logoColor=white)](https://github.com/ekmett/ftz/pkgs/container/ftz)
 [![Nix: flake](https://img.shields.io/static/v1?label=Nix&message=flake&color=5277C3&style=flat&logo=nixos&logoColor=white)](https://github.com/ekmett/ftz/blob/main/flake.nix)
