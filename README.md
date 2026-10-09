@@ -1,6 +1,6 @@
 # ftz
 
-[![docs: doxygen](https://img.shields.io/badge/docs-doxygen-blue?style=flat)](https://ekmett.github.io/ftz/)
+[![docs: doxygen](https://img.shields.io/badge/docs-doxygen-blue?style=flat&logo=doxygen&logoColor=white)](https://ekmett.github.io/ftz/)
 
 `ftz` provides fast, bit-for-bit reproducible floating-point arithmetic on real
 CPUs and GPUs. The goal is to produce the exact same answer on every supported
