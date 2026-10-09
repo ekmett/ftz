@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: BSD-2-Clause OR Apache-2.0
+**
+!CMakeLists.txt
+!LICENSE.md
+!src/
+!src/**
+!cmake/
+!cmake/**
+!tests/
+!tests/api/
+!tests/api/**
+!tests/ftz_module/
+!tests/ftz_module/native_api.cc

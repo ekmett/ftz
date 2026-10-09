@@ -4,6 +4,46 @@ Build FTZ against an installed [native](https://github.com/ekmett/native) packag
 Use the same compiler, standard library and exception settings throughout the
 application and its dependencies so their C++ modules remain compatible.
 
+## Docker and Nix
+
+`ghcr.io/ekmett/ftz:llvm23` adds FTZ to the
+[Native development image](https://github.com/ekmett/native/pkgs/container/native).
+It includes Clang 23, CMake/Ninja, Native and Hint, with FTZ installed under
+`/opt/ftz`. `CMAKE_PREFIX_PATH` includes both libraries. The image runs on
+Linux x86-64 and uses the default explicit-flushing, exception-disabled build.
+
+```sh
+docker run --rm -v "$PWD:/workspace" ghcr.io/ekmett/ftz:llvm23 \
+  bash -c 'cmake -S . -B build/docker -G Ninja -DCMAKE_BUILD_TYPE=Release &&
+           cmake --build build/docker --parallel &&
+           ctest --test-dir build/docker --output-on-failure'
+```
+
+Use `FROM ghcr.io/ekmett/ftz:llvm23` in a downstream Dockerfile. This repository's
+Dockerfile pins its Native base by digest; `--build-arg NATIVE_IMAGE=...` selects
+another qualified image. The Docker workflow checks the installed scalar,
+environment, SIMD and native-type interfaces before publishing `latest`,
+`llvm23` and `sha-<full commit>` tags. Pin the published digest for repeatable CI.
+
+On NixOS, or Linux with Nix's `nix-command` and `flakes` features enabled:
+
+```sh
+nix build
+nix flake check
+nix develop
+```
+
+The flake supplies `packages.<system>.ftz` and a matching development shell for
+`x86_64-linux` and `aarch64-linux`. It consumes Native's locked package and follows
+its nixpkgs input, so both libraries use the same compiler and dependencies.
+`nix build` runs the installed API checks and leaves the package at `result`.
+Inside `nix develop`, Native is available to CMake; use a separate `build/nix`
+directory. Downstream projects link `ftz::ftz` after
+`find_package(ftz CONFIG REQUIRED COMPONENTS ftz)`.
+
+These builds install the HLSL headers, but do not include GPU shader compilers
+or run GPU qualification. Normal CPU and shader CI remain separate.
+
 ## Native packages
 
 Use Clang 23, CMake 4.4 and Ninja, with an installed native package. Both packages
