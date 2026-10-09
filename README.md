@@ -1,6 +1,25 @@
 # ftz
 
-[![docs: doxygen](https://img.shields.io/badge/docs-doxygen-blue?style=flat&logo=doxygen&logoColor=white)](https://ekmett.github.io/ftz/)
+<!-- badges:start -->
+[![build](https://img.shields.io/github/actions/workflow/status/ekmett/ftz/native.yml?branch=main&style=flat&label=build&logo=githubactions&logoColor=white)](https://github.com/ekmett/ftz/actions/workflows/native.yml?query=branch%3Amain)
+[![docs build](https://img.shields.io/github/actions/workflow/status/ekmett/ftz/docs.yml?branch=main&style=flat&label=docs+build&logo=githubactions&logoColor=white)](https://github.com/ekmett/ftz/actions/workflows/docs.yml?query=branch%3Amain)
+[![issues](https://img.shields.io/github/issues/ekmett/ftz?style=flat&label=issues&color=007ec6&logo=github&logoColor=white)](https://github.com/ekmett/ftz/issues)
+[![commits](https://img.shields.io/github/commit-activity/w/ekmett/ftz?style=flat&label=commits&color=007ec6&logo=github&logoColor=white)](https://github.com/ekmett/ftz/activity)
+
+[![CMake: 4.4+](https://img.shields.io/static/v1?label=CMake&message=4.4%2B&color=064F8C&style=flat&logo=cmake&logoColor=white)](https://github.com/ekmett/ftz/blob/main/CMakeLists.txt)
+[![C++: 26](https://img.shields.io/static/v1?label=C%2B%2B&message=26&color=00599C&style=flat&logo=cplusplus&logoColor=white)](README.md)
+[![Clang: 23](https://img.shields.io/static/v1?label=Clang&message=23&color=6f42c1&style=flat&logo=llvm&logoColor=white)](README.md)
+[![HLSL: 2021](assets/badges/hlsl-version.svg)](README.md)
+
+[![OS: Linux · macOS · Windows](https://img.shields.io/static/v1?label=OS&message=Linux+%C2%B7+macOS+%C2%B7+Windows&color=64748b&style=flat)](https://github.com/ekmett/ftz/blob/main/.github/workflows/native.yml)
+[![CPU: x86-64 · ARM64](https://img.shields.io/static/v1?label=CPU&message=x86-64+%C2%B7+ARM64&color=64748b&style=flat)](README.md)
+[![GPU: Metal · Vulkan · WebGPU](https://img.shields.io/static/v1?label=GPU&message=Metal+%C2%B7+Vulkan+%C2%B7+WebGPU&color=64748b&style=flat)](README.md)
+
+[![license: BSD-2-Clause OR Apache-2.0](assets/badges/license.svg)](LICENSE.md)
+[![Contributor Covenant: 2.0](https://img.shields.io/static/v1?label=Contributor+Covenant&message=2.0&color=007ec6&style=flat&logo=contributorcovenant&logoColor=white)](CODE_OF_CONDUCT.md)
+
+[![docs: read](https://img.shields.io/static/v1?label=docs&message=read&color=007ec6&style=flat)](https://ekmett.github.io/ftz/)
+<!-- badges:end -->
 
 `ftz` provides fast, bit-for-bit reproducible floating-point arithmetic on real
 CPUs and GPUs. The goal is to produce the exact same answer on every supported

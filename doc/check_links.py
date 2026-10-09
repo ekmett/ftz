@@ -19,6 +19,8 @@ class Page(HTMLParser):
         attrs = dict(attributes)
         if attrs.get('id'):
             self.ids.add(attrs['id'])
+        if tag == 'img' and attrs.get('src'):
+            self.links.append(attrs['src'])
         if tag == 'a':
             if attrs.get('name'):
                 self.ids.add(attrs['name'])

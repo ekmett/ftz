@@ -22,6 +22,19 @@ class LinkTests(unittest.TestCase):
             with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
                 return check(root)
 
+    def test_badge_image(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'shaders').mkdir()
+            (root / 'shaders/index.html').write_text('<h1>Shaders</h1>')
+            (root / 'index.html').write_text('<img src="assets/badges/license.svg">')
+            with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                self.assertTrue(check(root))
+                badge = root / 'assets/badges/license.svg'
+                badge.parent.mkdir(parents=True)
+                badge.write_text('<svg xmlns="http://www.w3.org/2000/svg"/>')
+                self.assertFalse(check(root))
+
     def test_nested_site_anchor(self):
         self.assertFalse(self.result('shaders/index.html#shader'))
 

@@ -47,6 +47,10 @@ foreach(page IN LISTS docs_pages)
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${PROJECT_SOURCE_DIR}/${page}")
   file(READ "${PROJECT_SOURCE_DIR}/${page}" docs_markdown)
+  # Doxygen turns linked local SVGs into block figures. Keep badges inline.
+  string(REGEX REPLACE "\\[!\\[([^]]*)\\]\\((assets/badges/[^)]+)\\)\\]\\(([^)]+)\\)"
+    "<a href=\"https://github.com/ekmett/ftz/blob/main/\\3\"><img src=\"\\2\" alt=\"\\1\" /></a>"
+    docs_markdown "${docs_markdown}")
   if(page STREQUAL "LICENSE.md")
     string(REPLACE "``" "\\`\\`" docs_markdown "${docs_markdown}")
   endif()
@@ -112,6 +116,8 @@ add_custom_target(ftz_docs DEPENDS ftz_host_docs ftz_shader_docs)
 
 # Module summaries need aliases for Doxygen 1.18 crawler/navigation destinations.
 add_custom_command(TARGET ftz_host_docs POST_BUILD
+  COMMAND "${CMAKE_COMMAND}" -E copy_directory
+    "${PROJECT_SOURCE_DIR}/assets/badges" "${PROJECT_BINARY_DIR}/docs/html/assets/badges"
   COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_CURRENT_SOURCE_DIR}/fix_module_anchors.py"
     "${PROJECT_BINARY_DIR}/docs/html"
   VERBATIM)
