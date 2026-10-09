@@ -232,12 +232,12 @@ jobs:
           ctest --test-dir build/ftz --no-tests=error --output-on-failure \
             --output-junit "$GITHUB_WORKSPACE/build/logs/ftz-tests.xml" \
             2>&1 | tee build/logs/ftz-test.log
-      # Reporting may regenerate CMake; finish before moving its dependencies.
       - name: Generate coverage report
         id: coverage
         if: ${{ !cancelled() && inputs.coverage && hashFiles('build/ftz/coverage/raw/*.profraw') != '' }}
         run: cmake --build build/ftz --target ftz_coverage
       - name: Relocate both installed packages
+        if: ${{ !inputs.coverage }}
         run: |
           cmake --install build/ftz --prefix "$GITHUB_WORKSPACE/build/install/ftz" \
             2>&1 | tee build/logs/ftz-install.log
@@ -245,14 +245,12 @@ jobs:
           cmake -E rename build/install/simd 'build/relocated packages/simd'
           cmake -E rename build/install/ftz 'build/relocated packages/ftz'
       - name: Test installed module consumers
+        if: ${{ !inputs.coverage }}
         run: |
           compiler=clang++
           extra=()
           if [[ "$RUNNER_OS" == Windows ]]; then compiler=clang-cl; fi
           if [[ "$RUNNER_OS" != macOS ]]; then extra+=(-DCMAKE_LINKER_TYPE=LLD); fi
-          if [[ "$RUNNER_OS" != Windows && '${{ inputs.coverage }}' == true ]]; then
-            extra+=(-DCMAKE_EXE_LINKER_FLAGS=-fprofile-instr-generate)
-          fi
           for suite in package api; do
             options=()
             if [[ "$suite" == package ]]; then
