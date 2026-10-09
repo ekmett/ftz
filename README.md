@@ -1,6 +1,7 @@
 # ftz
 
 <!-- badges:start -->
+[![coverage](https://img.shields.io/github/actions/workflow/status/ekmett/ftz/coverage.yml?branch=main&label=coverage&logo=githubactions&logoColor=white)](https://github.com/ekmett/ftz/actions/workflows/coverage.yml)
 [![build](https://img.shields.io/github/actions/workflow/status/ekmett/ftz/native.yml?branch=main&style=flat&label=build&logo=githubactions&logoColor=white)](https://github.com/ekmett/ftz/actions/workflows/native.yml?query=branch%3Amain)
 [![Docker build](https://img.shields.io/github/actions/workflow/status/ekmett/ftz/docker.yml?branch=main&style=flat&label=docker+build&logo=docker&logoColor=white)](https://github.com/ekmett/ftz/actions/workflows/docker.yml?query=branch%3Amain)
 [![Nix build](https://img.shields.io/github/actions/workflow/status/ekmett/ftz/nix.yml?branch=main&style=flat&label=nix+build&logo=nixos&logoColor=white)](https://github.com/ekmett/ftz/actions/workflows/nix.yml?query=branch%3Amain)
@@ -21,6 +22,7 @@
 [![Contributor Covenant: 2.0](https://img.shields.io/static/v1?label=Contributor+Covenant&message=2.0&color=007ec6&style=flat&logo=contributorcovenant&logoColor=white)](CODE_OF_CONDUCT.md)
 
 [![docs: read](https://img.shields.io/static/v1?label=docs&message=read&color=007ec6&style=flat)](https://ekmett.github.io/ftz/)
+[![coverage report](https://img.shields.io/badge/coverage-report-F01F7A?logo=codecov&logoColor=white)](https://app.codecov.io/github/ekmett/ftz)
 [![Docker: ghcr.io](https://img.shields.io/static/v1?label=Docker&message=ghcr.io&color=2496ED&style=flat&logo=docker&logoColor=white)](https://github.com/ekmett/ftz/pkgs/container/ftz)
 [![Nix: flake](https://img.shields.io/static/v1?label=Nix&message=flake&color=5277C3&style=flat&logo=nixos&logoColor=white)](https://github.com/ekmett/ftz/blob/main/flake.nix)
 <!-- badges:end -->
@@ -138,3 +140,15 @@ cover the separate C++ and HLSL references.
 
 FTZ is dual-licensed under BSD-2-Clause and Apache-2.0. See
 [LICENSE.md](LICENSE.md) and individual source notices for retained upstream terms.
+
+Runtime coverage is available with `-DFTZ_ENABLE_COVERAGE=ON` in a Clang test
+build, with matching `llvm-cov`, `llvm-profdata`, and `grcov` on the path.
+Run the tests normally, then build the `ftz_coverage` target. It writes LCOV
+and HTML under `coverage/report/` without rerunning the tests. These reports
+measure executed C++ code; compile-time proofs and shader execution are not
+counted as runtime coverage.
+
+The coverage workflow reports each Linux, macOS and Windows CPU target on every
+commit to `main`. Codecov receives the LCOV report and CTest's JUnit results using
+GitHub OIDC. The retained artifact includes the detected CPU features and a
+browsable report. Ordinary builds remain uninstrumented.

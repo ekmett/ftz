@@ -3,6 +3,11 @@
 name: Native packages
 
 on:
+  workflow_call:
+    inputs:
+      coverage:
+        type: boolean
+        default: false
   pull_request:
     paths:
       - '.github/**'
@@ -20,11 +25,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: native-${{ github.ref }}
-  cancel-in-progress: true
+  group: native-${{ inputs.coverage && github.run_id || github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ !inputs.coverage }}
 
 jobs:
   native:
+    permissions:
+      contents: read
+      id-token: write
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
@@ -33,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.full_matrix && '[{"name":"Linux x64 LLVM 23 / AVX2","runner":"ubuntu-24.04","profile":"AVX2"},{"name":"Linux ARM64 LLVM 23 / NEON","runner":"ubuntu-24.04-arm","profile":"NEON"},{"name":"macOS ARM64 LLVM 23 / NEON","runner":"macos-15","profile":"NEON"},{"name":"Windows x64 LLVM 23 / AVX2","runner":"windows-2025","profile":"AVX2"},{"name":"Windows ARM64 LLVM 23 / NEON","runner":"windows-11-arm","profile":"NEON"}]' || '[{"name":"Linux ARM64 LLVM 23 / NEON","runner":"ubuntu-24.04-arm","profile":"NEON"},{"name":"Windows ARM64 LLVM 23 / NEON","runner":"windows-11-arm","profile":"NEON"}]') }}
+        include: ${{ fromJSON((inputs.coverage || inputs.full_matrix) && '[{"name":"Linux x64","runner":"ubuntu-24.04","profile":"AVX2"},{"name":"Linux ARM64","runner":"ubuntu-24.04-arm","profile":"NEON"},{"name":"macOS ARM64","runner":"macos-15","profile":"NEON"},{"name":"Windows x64","runner":"windows-2025","profile":"AVX2"},{"name":"Windows ARM64","runner":"windows-11-arm","profile":"NEON"}]' || '[{"name":"Linux ARM64","runner":"ubuntu-24.04-arm","profile":"NEON"},{"name":"Windows ARM64","runner":"windows-11-arm","profile":"NEON"}]') }}
     defaults:
       run:
         shell: bash
@@ -189,6 +197,14 @@ jobs:
       - name: Install optional accuracy oracle (Linux x64 only)
         if: matrix.runner == 'ubuntu-24.04'
         run: sudo apt-get update && sudo apt-get install -y libmpfr-dev
+      - name: Install coverage tools
+        if: inputs.coverage
+        run: |
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            python .github/scripts/install_grcov.py
+          else
+            python3 .github/scripts/install_grcov.py
+          fi
       - name: Build and test FTZ
         run: |
           compiler=clang++
@@ -206,7 +222,7 @@ jobs:
             -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -Dnative_DIR="$GITHUB_WORKSPACE/build/install/simd/lib/cmake/native" \
             -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
-            -DFTZ_BUILD_TESTS=ON -DFTZ_BUILD_DOCS=OFF \
+            -DFTZ_BUILD_TESTS=ON -DFTZ_BUILD_DOCS=OFF -DFTZ_ENABLE_COVERAGE=${{ inputs.coverage && 'ON' || 'OFF' }} \
             -DFTZ_BUILD_MPFR_TESTS=${{ matrix.runner == 'ubuntu-24.04' }} \
             -DFTZ_ENABLE_EXCEPTIONS=ON -DFTZ_ENABLE_PCH=ON -DFTZ_ENABLE_IPO=ON \
             -DFTZ_TEST_ISA="${{ matrix.profile }}" -DFTZ_TEST_PROFILES="${{ matrix.profile }}" \
@@ -229,6 +245,9 @@ jobs:
           extra=()
           if [[ "$RUNNER_OS" == Windows ]]; then compiler=clang-cl; fi
           if [[ "$RUNNER_OS" != macOS ]]; then extra+=(-DCMAKE_LINKER_TYPE=LLD); fi
+          if [[ "$RUNNER_OS" != Windows && '${{ inputs.coverage }}' == true ]]; then
+            extra+=(-DCMAKE_EXE_LINKER_FLAGS=-fprofile-instr-generate)
+          fi
           for suite in package api; do
             options=()
             if [[ "$suite" == package ]]; then
@@ -248,6 +267,38 @@ jobs:
               --output-junit "$GITHUB_WORKSPACE/build/logs/$suite-tests.xml" \
               2>&1 | tee "build/logs/$suite-test.log"
           done
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() && hashFiles('build/logs/*-tests.xml') != '' }}
+        uses: codecov/codecov-action@f9fe539f5290016afa014f8ef31597d3a61c2dea # v7
+        with:
+          report_type: test_results
+          use_oidc: true
+          directory: build/logs
+          flags: ${{ runner.os }}_${{ runner.arch }},${{ inputs.coverage && 'instrumented' || 'regular' }}
+          name: ${{ matrix.runner }}-${{ inputs.coverage && 'coverage' || 'build' }}
+          fail_ci_if_error: true
+      - name: Generate coverage report
+        id: coverage
+        if: ${{ !cancelled() && inputs.coverage && hashFiles('build/ftz/coverage/raw/*.profraw') != '' }}
+        run: cmake --build build/ftz --target ftz_coverage
+      - name: Retain coverage report
+        if: ${{ !cancelled() && steps.coverage.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-${{ matrix.runner }}
+          path: build/ftz/coverage/report/
+          retention-days: 7
+          if-no-files-found: error
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() && steps.coverage.outcome == 'success' }}
+        uses: codecov/codecov-action@f9fe539f5290016afa014f8ef31597d3a61c2dea # v7
+        with:
+          use_oidc: true
+          files: build/ftz/coverage/report/coverage.info
+          disable_search: true
+          flags: ${{ runner.os }}_${{ runner.arch }}
+          name: ${{ matrix.runner }}
+          fail_ci_if_error: true
       - name: Record compiler cache statistics
         if: always() && steps.sccache.outcome == 'success'
         run: |
