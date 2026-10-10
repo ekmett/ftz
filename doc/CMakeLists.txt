@@ -53,6 +53,10 @@ foreach(page IN LISTS docs_pages)
   if(page STREQUAL "LICENSE.md")
     string(REPLACE "# Licensing Terms" "# Licensing Terms {#license_page}"
       docs_markdown "${docs_markdown}")
+    string(REPLACE "## BSD 2-Clause License" "## BSD 2-Clause License {#bsd-2-clause-license}"
+      docs_markdown "${docs_markdown}")
+    string(REPLACE "## Apache License" "## Apache License {#apache-license}"
+      docs_markdown "${docs_markdown}")
   endif()
   get_filename_component(page_directory "${docs_markdown_root}/${page}" DIRECTORY)
   file(MAKE_DIRECTORY "${page_directory}")
