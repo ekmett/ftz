@@ -92,5 +92,5 @@ write_basic_package_version_file("${PROJECT_BINARY_DIR}/ftzConfigVersion.cmake"
   VERSION ${PROJECT_VERSION} COMPATIBILITY SameMajorVersion)
 install(FILES "${PROJECT_BINARY_DIR}/ftzConfig.cmake" "${PROJECT_BINARY_DIR}/ftzConfigVersion.cmake"
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/ftz")
-install(FILES LICENSE.md LICENSE-BSD-2-Clause.md LICENSE-APACHE.md
+install(FILES LICENSE.spdx LICENSE.md LICENSE-BSD-2-Clause.md LICENSE-APACHE.md
   DESTINATION "${CMAKE_INSTALL_DATADIR}/ftz")
