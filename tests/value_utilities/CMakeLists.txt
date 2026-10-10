@@ -40,3 +40,12 @@ foreach(profile IN LISTS VALUE_PROFILES)
  add_test(NAME values.${name} COMMAND values_${name})
  add_test(NAME values.wide.${name} COMMAND values_wide_${name})
 endforeach()
+
+# Emulation-only storage exercises the public semantic path without an ISA profile.
+add_executable(values_polyfill polyfill.cc)
+target_link_libraries(values_polyfill PRIVATE ftz::ftz)
+set_target_properties(values_polyfill PROPERTIES CXX_SCAN_FOR_MODULES ON INTERPROCEDURAL_OPTIMIZATION FALSE)
+if(COMMAND ftz_link_clang_cl_asan)
+  ftz_link_clang_cl_asan(values_polyfill)
+endif()
+add_test(NAME values.polyfill COMMAND values_polyfill)

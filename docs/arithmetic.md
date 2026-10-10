@@ -70,6 +70,15 @@ branches of a numerical conditional in the same type.
 See [math functions and implementation](math-kernels.md) for the available
 operations, their algorithms and range behavior.
 
+## Emulated vectors
+
+Use `native::simd<ftz::m32,4,native::isa<>(native::polyfill)>` for a vector
+with no hardware feature requirement. Its arithmetic and math use the scalar
+semantic graph lane by lane. Adding `native::polyfill` to a native ISA retains
+the native operations and permits Native to emulate missing operations or
+storage. Both forms retain the selected FTZ policy and its thread requirements;
+`h32` still requires admitted hardware flushing.
+
 ## Constant evaluation
 
 Arithmetic, comparisons, classification and math work in constant expressions

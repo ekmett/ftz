@@ -4,6 +4,13 @@
 // Included below the FTZ module declaration; all SIMD operations are dependent.
 
 namespace ftz::detail {
+  // An emulation-only ISA has no register operations to prefer. Reuse the
+  // scalar semantic graph; adding polyfill to a native ISA keeps its fast path.
+  template<class V> inline constexpr bool ftz32_emulated = [] {
+    if constexpr (requires { V::architecture; })
+      return V::architecture == ::native::isa<>(::native::polyfill);
+    else return false;
+  }();
   using ::native::mask_bits;
   template <class V> using ftz32_bridge = native::detail::fp32_bit_bridge<V>;
   template <class V> using ftz32_words = typename V::bits_type;
@@ -99,22 +106,26 @@ namespace ftz::detail {
   }
   template <bool Hardware, class V> [[nodiscard]] native_inline constexpr native_const V ftz32_vector_add(V a, V b) noexcept {
     if consteval { return ftz32_constant<ftz32_add<Hardware>>(a, b); }
+    if constexpr (ftz32_emulated<V>) return ftz32_constant<ftz32_add<Hardware>>(a, b);
     V r = a + b;
     if constexpr(Hardware) return r;
     else return ftz32_repair<ftz32_add<Hardware>>(r, ftz32_repair_mask(r), a, b);
   }
   template <bool Hardware, class V> [[nodiscard]] native_inline constexpr native_const V ftz32_vector_sub(V a, V b) noexcept {
     if consteval { return ftz32_constant<ftz32_sub<Hardware>>(a, b); }
+    if constexpr (ftz32_emulated<V>) return ftz32_constant<ftz32_sub<Hardware>>(a, b);
     V r = a - b;
     if constexpr(Hardware) return r;
     else return ftz32_repair<ftz32_sub<Hardware>>(r, ftz32_repair_mask(r), a, b);
   }
   template <class V> [[nodiscard]] native_inline constexpr native_const V ftz32_vector_mul(V a, V b) noexcept {
     if consteval { return ftz32_constant<ftz32_mul>(a, b); }
+    if constexpr (ftz32_emulated<V>) return ftz32_constant<ftz32_mul>(a, b);
     V r = a * b; return ftz32_repair<ftz32_mul>(r, ftz32_repair_mask(r), a, b);
   }
   template <class V> [[nodiscard]] native_inline constexpr native_const V ftz32_vector_fma(V a, V b, V c) noexcept {
     if consteval { return ftz32_constant<ftz32_fma>(a, b, c); }
+    if constexpr (ftz32_emulated<V>) return ftz32_constant<ftz32_fma>(a, b, c);
     V r = fma(a, b, c); return ftz32_repair<ftz32_fma>(r, ftz32_repair_mask(r), a, b, c);
   }
   // Same normalized three-refinement graph as ftz/math/approx.h.
@@ -122,6 +133,7 @@ namespace ftz::detail {
   // ordinary results; unusual scales and IEEE-like special values use the core.
   template <bool Hardware, class V> [[nodiscard]] native_inline constexpr native_const V ftz32_vector_div(V a, V b) noexcept {
     if consteval { return ftz32_constant<ftz32_div<Hardware>>(a, b); }
+    if constexpr (ftz32_emulated<V>) return ftz32_constant<ftz32_div<Hardware>>(a, b);
     using B = ftz32_bridge<V>; using U = ftz32_words<V>;
     U aw = B::encode(a), bw = B::encode(b);
     U aa = aw & U(0x7fffffffu), bb = bw & U(0x7fffffffu);
@@ -142,6 +154,7 @@ namespace ftz::detail {
   }
   template <class V> [[nodiscard]] native_inline constexpr native_const V ftz32_vector_sqrt(V a) noexcept {
     if consteval { return ftz32_constant<ftz32_sqrt>(a); }
+    if constexpr (ftz32_emulated<V>) return ftz32_constant<ftz32_sqrt>(a);
     using B = ftz32_bridge<V>; using U = ftz32_words<V>;
     U aw = B::encode(a), aa = aw & U(0x7fffffffu), exponent_a = aa.template right<23>();
     U parity = U(1) - (exponent_a & U(1));
@@ -884,7 +897,7 @@ export namespace ftz {
     // call. Only out-of-domain lanes use the scalar full-range/special-value path.
     template <detail::ftz32_value R, std::size_t N>
     [[nodiscard]] native_inline constexpr native_pure auto sincos(std::array<R, N> const & input) noexcept {
-      if consteval {
+      if (std::is_constant_evaluated() || ::ftz::detail::ftz32_emulated<R>) {
         std::array<R,N> sine{},cosine{};
         constexpr auto sine_word=[](std::uint32_t word) { return detail::ftz32_sincos<R::hardware>(word).sine; };
         constexpr auto cosine_word=[](std::uint32_t word) { return detail::ftz32_sincos<R::hardware>(word).cosine; };
@@ -915,7 +928,7 @@ export namespace ftz {
     }
     template <bool Cosine, detail::ftz32_value R, std::size_t N>
     [[nodiscard]] native_inline constexpr native_pure std::array<R, N> trig_single(std::array<R, N> const & input) noexcept {
-      if consteval {
+      if (std::is_constant_evaluated() || ::ftz::detail::ftz32_emulated<R>) {
         std::array<R,N> result{};
         for(std::size_t i=0;i<N;++i) {
           if constexpr(Cosine) result[i]=constant<detail::ftz32_cos<R::hardware>>(input[i]);
@@ -949,7 +962,7 @@ export namespace ftz {
     [[nodiscard]] native_inline constexpr native_pure std::array<R, N> cos(std::array<R, N> const & input) noexcept { return trig_single<true>(input); }
     template <unsigned int Degree = 6, detail::ftz32_value R, std::size_t N> requires (Degree >= 1 && Degree <= 7)
     [[nodiscard]] native_inline constexpr native_pure std::array<R, N> exp(std::array<R, N> const & input) noexcept {
-      if consteval {
+      if (std::is_constant_evaluated() || ::ftz::detail::ftz32_emulated<R>) {
         std::array<R,N> result{};
         for(std::size_t i=0;i<N;++i) result[i]=constant<detail::ftz32_exp<Degree>>(input[i]);
         return result;
@@ -964,7 +977,7 @@ export namespace ftz {
     }
     template <detail::ftz32_value R, std::size_t N>
     [[nodiscard]] native_inline constexpr native_pure std::array<R, N> expm1(std::array<R, N> const & input) noexcept {
-      if consteval {
+      if (std::is_constant_evaluated() || ::ftz::detail::ftz32_emulated<R>) {
         std::array<R,N> result{};
         for(std::size_t i=0;i<N;++i) result[i]=constant<detail::ftz32_expm1<R::hardware>>(input[i]);
         return result;
@@ -1037,7 +1050,7 @@ export namespace ftz {
     template <char Op, class R, std::size_t N>
     [[nodiscard]] native_inline constexpr native_pure std::array<R,N> ftz32_array_binary(
         std::array<R,N> const & a, std::array<R,N> const & b) noexcept {
-      if consteval {
+      if (std::is_constant_evaluated() || ::ftz::detail::ftz32_emulated<R>) {
         std::array<R,N> result{};
         for(std::size_t i=0;i<N;++i) {
           if constexpr(Op=='+') result[i]=a[i]+b[i];
@@ -1067,7 +1080,7 @@ export namespace ftz {
     template <class R, std::size_t N>
     [[nodiscard]] native_inline constexpr native_pure std::array<R,N> ftz32_array_fma(std::array<R,N> const & a,
         std::array<R,N> const & b, std::array<R,N> const & c) noexcept {
-      if consteval {
+      if (std::is_constant_evaluated() || ::ftz::detail::ftz32_emulated<R>) {
         std::array<R,N> result{};
         for(std::size_t i=0;i<N;++i) result[i]=fma(a[i],b[i],c[i]);
         return result;
@@ -1216,7 +1229,7 @@ export namespace ftz {
   /// saturating infinities. Returns std::array<R,N>.
   template<detail::ftz32_value R,std::size_t N>
   [[nodiscard]] native_inline constexpr std::array<R,N> tanh(std::array<R,N> const & input) noexcept {
-    if consteval {
+    if (std::is_constant_evaluated() || ::ftz::detail::ftz32_emulated<R>) {
       std::array<R,N> result{};
       for(std::size_t i=0;i<N;++i)
         result[i]=detail::ftz32_math::constant<detail::ftz32_tanh<R::hardware>>(input[i]);
@@ -1244,7 +1257,7 @@ export namespace ftz {
   /// values give NaN. Returns std::array<R,N>.
   template<detail::ftz32_value R,std::size_t N>
   [[nodiscard]] native_inline constexpr std::array<R,N> log(std::array<R,N> const & input) noexcept {
-    if consteval {
+    if (std::is_constant_evaluated() || ::ftz::detail::ftz32_emulated<R>) {
       std::array<R,N> result{};
       for(std::size_t i=0;i<N;++i)
         result[i]=detail::ftz32_math::constant<detail::ftz32_log<R::hardware>>(input[i]);
@@ -1271,7 +1284,7 @@ export namespace ftz {
   /// gives NaN. Returns std::array<R,N>.
   template<detail::ftz32_value R,std::size_t N>
   [[nodiscard]] native_inline constexpr std::array<R,N> log1p(std::array<R,N> const & input) noexcept {
-    if consteval {
+    if (std::is_constant_evaluated() || ::ftz::detail::ftz32_emulated<R>) {
       std::array<R,N> result{};
       for(std::size_t i=0;i<N;++i)
         result[i]=detail::ftz32_math::constant<detail::ftz32_log1p<R::hardware>>(input[i]);
@@ -1300,7 +1313,7 @@ export namespace ftz {
   template<detail::ftz32_value R,std::size_t N>
   [[nodiscard]] native_inline constexpr std::array<R,N> atan2(
       std::array<R,N> const & y,std::array<R,N> const & x) noexcept {
-    if consteval {
+    if (std::is_constant_evaluated() || ::ftz::detail::ftz32_emulated<R>) {
       std::array<R,N> result{};
       for(std::size_t i=0;i<N;++i)
         result[i]=detail::ftz32_math::constant<detail::ftz32_atan2<R::hardware>>(y[i],x[i]);
