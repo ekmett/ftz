@@ -35,10 +35,9 @@ set(DOXYGEN_ALIASES "license=@code{.spdx}" "endlicense=@endcode"
   "UMONITOR=@c UMONITOR" "UMWAIT=@c UMWAIT")
 # Keep relative Markdown links intact in a build-tree rendering copy. The
 # original pages, including the license, remain byte-for-byte untouched.
-# Paired backticks in the historical license denote quotation marks; escape
-# them for Doxygen without a shell filter (whose quoting differs on Windows).
 set(docs_markdown_root "${CMAKE_CURRENT_BINARY_DIR}/markdown")
-set(docs_pages README.md LICENSE.md CODE_OF_CONDUCT.md src/README.md tests/api/README.md)
+set(docs_pages README.md LICENSE.md LICENSE-BSD-2-Clause.md LICENSE-APACHE.md
+  CODE_OF_CONDUCT.md src/README.md tests/api/README.md)
 file(GLOB_RECURSE docs_guides CONFIGURE_DEPENDS RELATIVE "${PROJECT_SOURCE_DIR}"
   "${PROJECT_SOURCE_DIR}/docs/*.md")
 list(APPEND docs_pages ${docs_guides})
@@ -52,7 +51,8 @@ foreach(page IN LISTS docs_pages)
     "<a href=\"https://github.com/ekmett/ftz/blob/main/\\3\"><img src=\"\\2\" alt=\"\\1\" /></a>"
     docs_markdown "${docs_markdown}")
   if(page STREQUAL "LICENSE.md")
-    string(REPLACE "``" "\\`\\`" docs_markdown "${docs_markdown}")
+    string(REPLACE "# Licensing Terms" "# Licensing Terms {#license_page}"
+      docs_markdown "${docs_markdown}")
   endif()
   get_filename_component(page_directory "${docs_markdown_root}/${page}" DIRECTORY)
   file(MAKE_DIRECTORY "${page_directory}")
