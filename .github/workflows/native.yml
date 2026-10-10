@@ -38,6 +38,7 @@ jobs:
     timeout-minutes: 45
     env:
       SCCACHE_GHA_ENABLED: "true"
+      NINJA_STATUS: "[%f/%t running=%r elapsed=%e] "
     strategy:
       fail-fast: false
       matrix:
@@ -191,7 +192,12 @@ jobs:
             -DNATIVE_ENABLE_EXCEPTIONS=ON -DNATIVE_ENABLE_PCH=ON -DNATIVE_ENABLE_IPO=ON \
             "${extra[@]}" \
             2>&1 | tee build/logs/simd-configure.log
-          cmake --build build/simd --parallel 2>&1 | tee build/logs/simd-build.log
+          build_status=0
+          cmake --build build/simd --parallel 4 2>&1 | tee build/logs/simd-build.log || build_status=$?
+          if [[ -f "build/simd/.ninja_log" ]]; then
+            cp "build/simd/.ninja_log" "build/simd/primary-build.ninja.log"
+          fi
+          test "$build_status" -eq 0
           cmake --install build/simd --prefix "$GITHUB_WORKSPACE/build/install/simd" \
             2>&1 | tee build/logs/simd-install.log
       - name: Install optional accuracy oracle (Linux x64 only)
@@ -227,9 +233,14 @@ jobs:
             -DFTZ_ENABLE_EXCEPTIONS=ON -DFTZ_ENABLE_PCH=ON -DFTZ_ENABLE_IPO=ON \
             -DFTZ_TEST_ISA="${{ matrix.profile }}" -DFTZ_TEST_PROFILES="${{ matrix.profile }}" \
             "${extra[@]}" 2>&1 | tee build/logs/ftz-configure.log
-          cmake --build build/ftz --parallel 2>&1 | tee build/logs/ftz-build.log
+          build_status=0
+          cmake --build build/ftz --parallel 4 2>&1 | tee build/logs/ftz-build.log || build_status=$?
+          if [[ -f "build/ftz/.ninja_log" ]]; then
+            cp "build/ftz/.ninja_log" "build/ftz/primary-build.ninja.log"
+          fi
+          test "$build_status" -eq 0
           ctest --test-dir build/ftz --show-only=json-v1 > build/logs/ftz-tests.json
-          ctest --test-dir build/ftz --no-tests=error --output-on-failure \
+          ctest --test-dir build/ftz --parallel 4 --no-tests=error --output-on-failure \
             --output-junit "$GITHUB_WORKSPACE/build/logs/ftz-tests.xml" \
             2>&1 | tee build/logs/ftz-test.log
       - name: Generate coverage report
@@ -265,8 +276,13 @@ jobs:
               -Dftz_DIR="$GITHUB_WORKSPACE/build/relocated packages/ftz/lib/cmake/ftz" \
               -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
               "${extra[@]}" "${options[@]}" 2>&1 | tee "build/logs/$suite-configure.log"
-            cmake --build "build/$suite" --parallel 2>&1 | tee "build/logs/$suite-build.log"
-            ctest --test-dir "build/$suite" --no-tests=error --output-on-failure \
+            build_status=0
+            cmake --build "build/$suite" --parallel 4 2>&1 | tee "build/logs/$suite-build.log" || build_status=$?
+            if [[ -f "build/$suite/.ninja_log" ]]; then
+              cp "build/$suite/.ninja_log" "build/$suite/primary-build.ninja.log"
+            fi
+            test "$build_status" -eq 0
+            ctest --test-dir "build/$suite" --parallel 4 --no-tests=error --output-on-failure \
               --output-junit "$GITHUB_WORKSPACE/build/logs/$suite-tests.xml" \
               2>&1 | tee "build/logs/$suite-test.log"
           done
@@ -323,5 +339,8 @@ jobs:
             build/sccache-pch-probe/
             build/*/CMakeCache.txt
             build/*/compile_commands.json
+            build/*/primary-build.ninja.log
+            build/*/build.ninja
+            build/*/CMakeFiles/rules.ninja
             build/*/CMakeFiles/CMakeConfigureLog.yaml
             build/*/Testing/Temporary/
