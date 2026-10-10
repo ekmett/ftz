@@ -22,7 +22,7 @@
             src = pkgs.lib.fileset.toSource {
               root = ./.;
               fileset = pkgs.lib.fileset.unions [
-                ./CMakeLists.txt ./LICENSE.spdx ./LICENSE.md
+                ./CMakeLists.txt ./LICENSE.md
                 ./src ./cmake
                 ./tests/api ./tests/ftz_module/native_api.cc
               ];
