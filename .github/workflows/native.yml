@@ -74,19 +74,8 @@ jobs:
         uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
         with:
           version: v0.16.0
-      - name: Check compiler cache launcher
-        run: |
-          if [[ "$RUNNER_OS" == Windows ]]; then
-            python -B .github/scripts/test_sccache_launcher.py
-          else
-            python3 -B .github/scripts/test_sccache_launcher.py
-          fi
-      - name: Check PCH cache inputs
-        if: runner.os != 'Windows'
-        run: python3 -B .github/scripts/test_sccache_pch.py "$(command -v clang++)" "$GITHUB_WORKSPACE/build/sccache-pch-probe"
-      - name: Check Windows module cache inputs
-        if: runner.os == 'Windows'
-        run: python -B .github/scripts/test_sccache_modules.py --compiler clang-cl --output build/sccache-modules --cmake-arg=-DCMAKE_LINKER_TYPE=LLD
+      - name: Set up module cache launcher
+        uses: ekmett/modcache@main
       - name: Record Windows hardware and admit the test architecture
         if: runner.os == 'Windows'
         shell: pwsh
@@ -179,14 +168,11 @@ jobs:
           extra=()
           if [[ "$RUNNER_OS" == Windows ]]; then
             compiler=clang-cl
-            launcher="python;$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
-          else
-            launcher="$(command -v python3);$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
           fi
           if [[ "$RUNNER_OS" != macOS ]]; then extra+=(-DCMAKE_LINKER_TYPE=LLD); fi
           cmake -S build/deps/simd -B build/simd -G Ninja \
             -DCMAKE_CXX_COMPILER="$compiler" -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_COMPILER_LAUNCHER="$launcher" \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=modcache \
             -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DNATIVE_BUILD_TESTS=OFF -DNATIVE_BUILD_DOCS=OFF \
             -DNATIVE_ENABLE_EXCEPTIONS=ON -DNATIVE_ENABLE_PCH=ON -DNATIVE_ENABLE_IPO=ON \
@@ -217,14 +203,11 @@ jobs:
           extra=()
           if [[ "$RUNNER_OS" == Windows ]]; then
             compiler=clang-cl
-            launcher="python;$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
-          else
-            launcher="$(command -v python3);$GITHUB_WORKSPACE/.github/scripts/sccache_launcher.py"
           fi
           if [[ "$RUNNER_OS" != macOS ]]; then extra+=(-DCMAKE_LINKER_TYPE=LLD); fi
           cmake -S . -B build/ftz -G Ninja \
             -DCMAKE_CXX_COMPILER="$compiler" -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_COMPILER_LAUNCHER="$launcher" \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=modcache \
             -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -Dnative_DIR="$GITHUB_WORKSPACE/build/install/simd/lib/cmake/native" \
             -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
@@ -336,7 +319,6 @@ jobs:
           path: |
             build/logs/
             build/ftz/tests/log/mpfr-*.txt
-            build/sccache-pch-probe/
             build/*/CMakeCache.txt
             build/*/compile_commands.json
             build/*/primary-build.ninja.log

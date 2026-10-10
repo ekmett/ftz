@@ -112,33 +112,19 @@ New code can name its policy directly.
 
 ## Compiler caching
 
-CI uses sccache for native and FTZ producer builds. Installed consumer checks
-run without a cache launcher. The repository's launcher includes explicit PCH
-inputs in the cache key and bypasses caching for module/PCH arguments it cannot
-safely interpret, including opaque Windows response files. Ordinary Windows
-translation units remain cacheable. See [validation](validation.md) for the
-invalidation checks.
+CI uses [modcache](https://github.com/ekmett/modcache) with sccache for Native
+and FTZ producer builds. Installed consumer checks run without a launcher.
 
-For local producer builds, install sccache separately and put it on `PATH`.
-Add `-DCMAKE_CXX_COMPILER_LAUNCHER=sccache` for its normal local disk cache, or
-use the same platform-aware launcher from the FTZ checkout:
+For local builds, put both tools on `PATH` and add
+`-DCMAKE_CXX_COMPILER_LAUNCHER=modcache` to each producer's configure command.
+The launcher includes raw module dependencies and supported serialized inputs
+in the cache key; unsupported inputs bypass caching. Windows module producers
+remain uncached.
 
-```sh
--DCMAKE_CXX_COMPILER_LAUNCHER="$(command -v python3);$PWD/.github/scripts/sccache_launcher.py"
-```
-
-Use that argument on each producer's configure command. It is confined to the
-build tree and is not exported into installed packages. Keep PCH, modules, IPO
-and exception settings unchanged. Omit the argument for a fresh uncached tree,
-or set `-DCMAKE_CXX_COMPILER_LAUNCHER=` to clear it in an existing tree.
-
-To measure reuse, build and run CTest, record cache statistics, clean the build
-outputs, run `sccache --zero-stats`, then rebuild and test with the same paths
-and compiler. A no-op incremental build does not exercise caching. Dependency
-scanning, linking and some CMake-generated BMI commands remain outside the
-launcher. [Validation](validation.md) describes the cache
-checks; successful builds alone do not establish hosted
-cache reuse or a speedup.
+The setting belongs to the build tree and is not exported into installed
+packages. Set `-DCMAKE_CXX_COMPILER_LAUNCHER=` to clear it. Use
+`sccache --show-stats` to inspect reuse; a no-op incremental build does not
+exercise the cache. Dependency scanning and linking are separate work.
 
 ## API reference
 

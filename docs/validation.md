@@ -63,12 +63,11 @@ do not by themselves establish CPU instruction admission or GPU execution.
 
 ## Compiler cache
 
-CI checks argument preservation, conservative cache bypasses and propagation of
-the compiler's exit status. The POSIX PCH fixture changes the PCH while retaining
-equivalent preprocessed text; the Windows module fixture changes the module
-while retaining the importer source. Rebuilt consumers must see the changed
-inputs, and an ordinary translation unit must still produce a warm cache hit.
-These checks use isolated caches and leave Clang's validation enabled.
+Compiler-launcher regression tests live in
+[modcache](https://github.com/ekmett/modcache). They check argument and exit-status
+preservation, unchanged cache hits, raw-source invalidation and changed module
+inputs using isolated caches. Native and FTZ exercise that launcher in their
+normal producer builds; installed consumer checks remain uncached.
 
 ## Independent accuracy checks
 
