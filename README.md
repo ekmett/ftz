@@ -22,7 +22,7 @@
 [![Contributor Covenant: 2.0](https://img.shields.io/static/v1?label=Contributor+Covenant&message=2.0&color=007ec6&style=flat&logo=contributorcovenant&logoColor=white)](CODE_OF_CONDUCT.md)
 
 [![docs: read](https://img.shields.io/static/v1?label=docs&message=read&color=007ec6&style=flat&logo=pandoc&logoColor=white)](https://ekmett.github.io/ftz/)
-[![coverage report](https://img.shields.io/badge/coverage-report-F01F7A?logo=codecov&logoColor=white)](https://app.codecov.io/github/ekmett/ftz)
+[![coverage](https://img.shields.io/codecov/c/github/ekmett/ftz?logo=codecov&logoColor=%23ffffff)](https://app.codecov.io/github/ekmett/ftz)
 [![Docker: ghcr.io](https://img.shields.io/static/v1?label=Docker&message=ghcr.io&color=2496ED&style=flat&logo=docker&logoColor=white)](https://github.com/ekmett/ftz/pkgs/container/ftz)
 [![Nix: flake](https://img.shields.io/static/v1?label=Nix&message=flake&color=5277C3&style=flat&logo=nixos&logoColor=white)](https://github.com/ekmett/ftz/blob/main/flake.nix)
 <!-- badges:end -->
