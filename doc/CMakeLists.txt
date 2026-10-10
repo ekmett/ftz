@@ -36,7 +36,7 @@ set(DOXYGEN_ALIASES "license=@code{.spdx}" "endlicense=@endcode"
 # Keep relative Markdown links intact in a build-tree rendering copy. The
 # original pages, including the license, remain byte-for-byte untouched.
 set(docs_markdown_root "${CMAKE_CURRENT_BINARY_DIR}/markdown")
-set(docs_pages README.md LICENSE.md LICENSE-BSD-2-Clause.md LICENSE-APACHE.md
+set(docs_pages README.md LICENSE.md
   CODE_OF_CONDUCT.md src/README.md tests/api/README.md)
 file(GLOB_RECURSE docs_guides CONFIGURE_DEPENDS RELATIVE "${PROJECT_SOURCE_DIR}"
   "${PROJECT_SOURCE_DIR}/docs/*.md")
